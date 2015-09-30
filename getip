@@ -855,6 +855,7 @@ fi
 # $urlDownloadProgram will hold which to use, either: 'WGET' or 'CURL'.
 
 # Set the default download program (which to use if both are installed).
+# urlDefaultDownloadProgram="CURL"
 urlDefaultDownloadProgram="WGET"
 
 # Check whether wget and curl are installed, at least one is required.

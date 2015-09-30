@@ -1,0 +1,90 @@
+.\" Manpage for getip.
+
+
+.TH GETIP 1 "29 Sep 2015" "1.0" "GETIP VERSION 1.0"
+
+.SH NAME
+
+getip \- retrieves the WAN IP address
+
+.SH SYNOPSIS
+
+getip [-m | -f | -c | -u url] [-n num_sources] [-t timeout_secs] [-v] [-h]
+
+.SH REQUIREMENTS
+
+The BASH shell and either wget or curl must be installed. Most modern UNIX like systems come with BASH and wget pre-installed. wget and curl are both programs which download pages from the web. getip works equally well with them both. wget is used by default if both are installed on the system.
+
+.SH DESCRIPTION
+
+getip is a BASH script used to retrieve the WAN IP address from behind a router using web sites (sources) which provide the IP address in plain text or HTML.
+
+From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the page, or an IP-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot version numbers so they can be ignored). In such cases an IP address fetching script could provide a user with an incorrect IP address. getip uses multi mode by default to prevent this from happening.
+
+In multi mode the IP address is retrieved from multiple sources (default: 2) and compared, so that the correct IP address can be provided. Users are advised to use multi mode in preference to fast mode.
+
+The getip script retrieves IPv4 addresses only and not IPv6 addresses.
+
+This script currently contains over 100 web sources.
+
+The list of web sources is randomized every time the script is run. This is so that undue pressure is not placed on servers near the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
+
+.SH OPTIONS
+.BR
+In typical usage no options are necessary.
+.BR
+
+.TP
+\fB\-m\fR
+Multi mode (default); fetch the IP address from multiple sources and check that they are all the same. In multi mode the default number of sources to use is 2. This is the default mode so \fB\-m\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
+
+.TP
+\fB\-f\fR
+Fast mode; fetch the IP address from just one source in order to retrieve it more quickly than in multi mode. Fast mode is not guaranteed to be faster than multi mode but on average it will be slightly faster. It is advisable that users only use fast mode to confirm their IP address when it is already known, e.g. checking a VPN connection. In some circumstances an incorrect IP address can be returned in fast mode, see \fBDescription\fR section above.
+
+.TP
+\fB\-c\fR
+Check mode; displays a table containing the url of each source, the IP address that it returned (or a failure message), the time taken to retrieve the IP address, and various statistics. Used to test the sources list.
+
+.TP
+\fB\-u\fR \fBurl\fR
+Test Url mode; tests an url for inclusion in the sources list. It will display whether the url returned a single IP address (which is required for inclusion in the sources list), multiple IP addresses, or no IP addresses at all. To aid debugging it will list all IP addresses returned.
+
+.TP
+\fB\-n\fR \fBnum_sources\fR
+Sets the Number of sources to use in multi mode. The allowed range of values is >=2 and <=5. The default value is 2.
+
+.TP
+\fB\-t\fR \fBnum_seconds\fR
+Sets the Timeout for each source. This is not an overall timeout for the script. When a source gives no response or is slow to respond, getip moves on to the next source and this is the timeout in seconds for each one. Note: Real numbers are permitted, e.g. 0.75, 1.5, .85, etc. The allowed range of values is >=0.2 and <=30 (but these extremes are overkill).
+
+The default timeouts are dependant on mode, in seconds they are; multi mode 1, fast mode 0.75, check mode 10, test url mode 10.
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Help; display usage and help. \fBman\fR \fBgetip\fR is better and that's what you are reading. :)
+
+.TP
+\fB\-v\fR
+Verbose; display detailed information while the script runs.
+
+.TP
+\fB\-\-version\fR
+Display version number.
+
+.SH EXIT STATUS
+getip returns 0 on success, and non-zero on failure.
+
+.SH BUGS
+
+No known bugs.
+
+.SH HOMEPAGE
+
+https://github.com/mattst/getip
+.LP
+Feel free to submit new IP address providing web pages to be added to the sources list.
+
+.SH AUTHOR
+
+<mattst@i-dig.info>
