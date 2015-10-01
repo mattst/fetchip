@@ -61,12 +61,16 @@ Sets the Timeout for each source. This is not an overall timeout for the script.
 The default timeouts are dependant on mode, in seconds they are; multi mode 1, fast mode 0.75, check mode 10, test url mode 10.
 
 .TP
-\fB\-h\fR, \fB\-\-help\fR
-Help; display usage and help. \fBman\fR \fBgetip\fR is better and that's what you are reading. :)
+\fB\-b\fR
+Bare output; display only the IP address and not the "IPv4 address:" prefix.
 
 .TP
 \fB\-v\fR
 Verbose; display detailed information while the script runs.
+
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Help; display usage and help. \fBman\fR \fBgetip\fR is better and that's what you are reading. :)
 
 .TP
 \fB\-\-version\fR

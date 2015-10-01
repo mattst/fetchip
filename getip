@@ -39,6 +39,7 @@
 # -u url       TEST; test an url for possible inclusion in the source urls and show info.
 # -n number    Set the NUMBER of sources to use for verification in multi mode. Range >=2 and <=5.
 # -t seconds   Set the TIMEOUT for each source. Real numbers are permitted (e.g. '1.5', '0.75').
+# -b           Bare output; display only the IP address and not the "IPv4 address:" prefix.
 # -v           VERBOSE; output information while the script is running.
 # -h, --help   HELP; output program usage and help.
 #
@@ -123,6 +124,12 @@
 #
 # There is no 'global' timeout feature for getip, however the timeout multiplied by the number of
 # sources means there is a de facto 'global' timeout.
+#
+#
+# BARE                   - Command line switch: -b
+#
+# Turn bare output on - the script will display only the IP address and not the "IPv4 address:"
+# prefix.
 #
 #
 # VERBOSE                - Command line switch: -v
@@ -215,6 +222,7 @@ sourceUrls=(
 "http://webtools.csx.cam.ac.uk/myip/results.html"
 "http://whatismyipaddress.com/ip-lookup"
 "http://whatismyip.org/"
+"http://whatsmyuseragent.com/"
 "http://www.123myip.co.uk"
 "http://www.bobborst.com/tools/whatsmyip/"
 "http://www.displaymyip.com"
@@ -342,6 +350,9 @@ userSetNumIpToUseForMulti="FALSE"
 # Flag variable to hold if the user has set a timeout (the -t option).
 userSetTimeout="FALSE"
 
+# Flag variable to hold if the user has set the bare output option.
+bareOutput="FALSE"
+
 # Flag variable to hold if the user has turned on verbose reporting (the -v option).
 verbose="FALSE"
 
@@ -436,11 +447,14 @@ Options (Note: typical usage requires no options at all):
     Multi: $timeoutMultiMode, Fast: $timeoutFastMode, \
 Check: $timeoutCheckMode, Test Url: $timeoutTestUrlMode
 
--h
-    Help; display usage and help. Also: --help and -?
+-b
+    Bare output; display only the IP address and not the "IPv4 address" prefix.
 
 -v
     Verbose; display detailed information.
+
+-h
+    Help; display usage and help. Also: --help and -?
 
 --version
     Display version number.
@@ -506,26 +520,7 @@ Homepage: https://github.com/mattst/getip
 License:  GNU General Public License v.3
 EndOfDisplayUsageMessage
 }
-#
-# CHECK                  - Command line switch: -c
-#
-# In check mode getip will display a table in the shell of all the web sources, the IP address which
-# was retrieved from the source, or a message of failure, and the time taken to retrieve the IP
-# address. In addition it displays some statistics at the end. It can be used by users to check that
-# all the sources are functioning correctly. getip will continue to function perfectly adequately
-# with even 25% of the sources down. If more than 15% are down you may wish to download the latest
-# version of the script or manually delete sources which aren't working from the list below.
-#
-#
-# TESTURL                - Command line switch: -u url
-#
-# In test url mode getip will test the url to see if it is suitable for adding to the source list.
-# getip will display a small table showing the url's status; whether the Url successfully returned a
-# single valid IP address, or failed by supplying more than one valid IP address, no IP address at
-# all, or if the timeout was exceeded. Only experienced users should use this feature to add an url
-# to the source list. If you do use this to find a new url that is suitable for inclusion please
-# contact the developer with the url.
-#
+
 
 # Function which sends the various error messages to STDERR.
 Output_Error_Message()
@@ -687,7 +682,7 @@ fi
 
 
 # Use getopts to handle the command line arguments. ToDo: Add long option support.
-while getopts ":cfmu:vhn:t:" option; do
+while getopts ":cfmu:bvhn:t:" option; do
 
     case $option in
 
@@ -725,8 +720,13 @@ while getopts ":cfmu:vhn:t:" option; do
             fi
             ;;
 
+        b)
+            # -b has been used, turn on bare output.
+            bareOutput="TRUE"
+            ;;
+
         v)
-            # -v has been used, turn on verbose mode.
+            # -v has been used, turn on verbose.
             verbose="TRUE"
             ;;
 
@@ -851,6 +851,11 @@ if [ "$userSetTimeout" = "TRUE" ]; then
     timeout="$timeoutSecondsArg"
 fi
 
+# If the user has set both verbose and bare output ignore the latter, verbose trumps bare.
+if [ "$verbose" = "TRUE" -a "$bareOutput" = "TRUE" ]; then
+    bareOutput="FALSE"
+fi
+
 # Either wget or curl can be used to download the source urls.
 # $urlDownloadProgram will hold which to use, either: 'WGET' or 'CURL'.
 
@@ -944,7 +949,7 @@ Extract_Ip_Addresses_From_File()
     # Assign $fileName the value of the 1st function arg (NOT script arg). The function will
     # extract valid IP addresses from the file $fileName which will be the temp file used to
     # store the contents downloaded from the web sources.
-    fileName="$1"
+    local fileName="$1"
 
     # The following Awk program will search for and print all valid IP addresses in the file
     # which is given to it as input.
@@ -969,7 +974,7 @@ Extract_Ip_Addresses_From_File()
     # The regexes beginsWithFwdSlashNotIP and endsWithFwdSlashNotIP match an ipLikeSequence which
     # begins or ends with a forward slash so that those sequences can be removed.
 
-    awkExtractIPAddresses='
+    local awkExtractIPAddresses='
     BEGIN {
         # Regex to match an IP address like sequence (even if too long to be an IP). This is
         # deliberately a loose match, the END section will check for IP address validity.
@@ -1041,7 +1046,7 @@ Extract_Ip_Addresses_From_File()
     }'
 
     # Extract valid IP addresses from $fileName, they will each be separated by a new line.
-    awkValidIpAddresses=$(awk "$awkExtractIPAddresses" < "$fileName")
+    local awkValidIpAddresses=$(awk "$awkExtractIPAddresses" < "$fileName")
 
     # Echo $awkValidIpAddresses for capture in a variable at the point of function invocation.
     echo "$awkValidIpAddresses"
@@ -1071,7 +1076,8 @@ Get_Ip_From_Url()
     # Some sources (very few) won't work without the user agent header being sent.
     # We are not trying to hide that this is a script, use a user agent header like googlebot's:
     # Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-    userAgent="Mozilla/5.0 (compatible; getipscript/$version; +https://github.com/mattst/getip)"
+    local userAgent="Mozilla/5.0 (compatible; getipscript/$version; \
+                                  +https://github.com/mattst/getip)"
 
     # Store the start time for the timeout. Note: %s seconds, %N nanoseconds.
     local timeoutStart=$(date +%s.%N)
@@ -1137,11 +1143,11 @@ Get_Ip_From_Url()
         # Use the function Extract_Ip_Addresses_From_File() to extract valid IP addresses from
         # $tempFileName. Each IP address will be separated by a new line but if the source is
         # working as expected then there will be exactly one IP address.
-        ipAddressList=$(Extract_Ip_Addresses_From_File "$tempFileName")
+        local ipAddressList=$(Extract_Ip_Addresses_From_File "$tempFileName")
 
         # Array to hold the IP address or addresses and an associated counter.
-        ipAddressValidArray=""
-        ipAddressValidCounter="0"
+        local ipAddressValidArray=""
+        local ipAddressValidCounter="0"
 
         # Iterate through $ipAddressList storing the IP address(es) in the array.
         for validIpAddress in $(echo "$ipAddressList" | tr "\n" " "); do
@@ -1311,6 +1317,7 @@ Calculate_Median_Average_Time()
     if [ "$medianItemsEvenOrOdd" = "ODD" ]; then
 
         # Work out which is the middle item (integer arithmetic so division will be rounded down).
+        local middleItem=""
         let "middleItem = (statsTotalValidIp / 2) + 1"
 
         # Awk expression to print the middle row which will be the median value.
@@ -1326,6 +1333,8 @@ Calculate_Median_Average_Time()
     if [ "$medianItemsEvenOrOdd" = "EVEN" ]; then
 
         # Work out which are the 2 middle items.
+        local middleItem1=""
+        local middleItem2=""
         let "middleItem1 = statsTotalValidIp / 2"
         let "middleItem2 = middleItem1 + 1"
 
@@ -1348,7 +1357,7 @@ Calculate_Median_Average_Time()
 Display_Stats()
 {
     # Trim whitespace from $statsTimesList and $statsValidIpAddressList.
-    sedExpTrim='s/^[ \t]*//g;s/[ \t]*$//g'
+    local sedExpTrim='s/^[ \t]*//g;s/[ \t]*$//g'
     statsTimesList=$(echo "$statsTimesList" | sed "$sedExpTrim")
     statsValidIpAddressList=$(echo "$statsValidIpAddressList" | sed "$sedExpTrim")
 
@@ -1422,8 +1431,8 @@ Display_Stats()
         # a variable which has not yet been assigned a value then the variable is automatically
         # assigned a value of 0 before the arithmetic operation takes place. So in the code below
         # all the members of the countIP[] array are effectively initialized to 0.
-        awkExpIpCount='{ countIP[$1]++ } END { for (ip in countIP) \
-                         printf("%-15d  -  %s\n", countIP[ip], ip); }'
+        local awkExpIpCount='{ countIP[$1]++ } END { for (ip in countIP) \
+                               printf("%-15d  -  %s\n", countIP[ip], ip); }'
 
         printf "Unique IP Addresses List:\n\n"
         printf "Num Occurrences  -  IP Address\n"
@@ -1650,7 +1659,11 @@ for url in "${urlArray[@]}"; do
             echo ""
             echo "IPv4 address: $ipAddress"
         else
-            echo "$ipAddress"
+            if [ "$bareOutput" = "TRUE" ]; then
+                echo "$ipAddress"
+            else
+                echo "IPv4 address: $ipAddress"
+            fi
         fi
 
         exit "$ExitStatusSuccess"
@@ -1707,7 +1720,11 @@ for url in "${urlArray[@]}"; do
                 echo ""
                 echo "IPv4 address: $ipAddress"
             else
-                echo "$ipAddress"
+                if [ "$bareOutput" = "TRUE" ]; then
+                    echo "$ipAddress"
+                else
+                    echo "IPv4 address: $ipAddress"
+                fi
             fi
 
             exit "$ExitStatusSuccess"
