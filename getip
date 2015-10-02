@@ -15,8 +15,8 @@
 #
 # The complete list of all utilities and Bash shell commands used by the getip script:
 #
-# awk, bc, curl, date, disown, echo, exit, getopts, grep, hash, kill, mktemp, printf, ps, $RANDOM,
-# rm, sed, sort, tr, uniq, unset, wc, wget. [wget or curl required, not both.]
+# awk, bc, curl, date, disown, echo, exit, getopts, grep, hash, kill, man, mktemp, printf, ps,
+# $RANDOM, rm, sed, sort, tr, uniq, unset, wc, wget. [wget or curl required, not both.]
 #
 # With the exception of wget and curl all of the above utilities and commands are expected to exist
 # on all modern UNIX like operating systems. If neither wget nor curl are installed the script will
@@ -382,143 +382,101 @@ GetIpMultipleValidIP="2"
 GetIpTimedOut="3"
 
 
-# Function which displays the script usage message / help.
+# Display help by redirecting the text of the man page to 'man'.
 Display_Usage_Message()
 {
-cat << EndOfDisplayUsageMessage
-getip v. $version
 
-Usage:
-    getip [-m | -f | -c | -u url] [-n num_sources] [-t timeout_secs] [-v] [-h]
+man /dev/stdin <<EOF
 
-getip is a script used to retrieve an external IP address from behind a router
-using web sites (sources) which provide the IP address in plain text or HTML.
-In the default mode (multi mode) 2 sources are used to check the IP address,
-so that users can be confident that the correct IP address will be returned.
+.TH GETIP 1 "29 Sep 2015" "1.0" "GETIP VERSION 1.0"
 
-Note: The getip script retrieves IPv4 addresses only and not IPv6 addresses.
+.SH NAME
 
-This script currently contains $urlArrayLength web sources.
+getip \- retrieves the WAN IP address
 
-The list of web sources is randomized every time the script is run. This is so
-that undue pressure is not placed on servers near the top of the list. The
-randomizing process is done very quickly and does not have a significant impact
-on the running time of IP address retrieval.
+.SH SYNOPSIS
 
+getip [-m | -f | -c | -u url] [-n num_sources] [-t timeout_secs] [-v] [-h]
 
-Options (Note: typical usage requires no options at all):
+.SH REQUIREMENTS
 
--m
-    Multi mode; get the IP address from multiple sources and check that they
-    are all the same. In multi mode the default number of sources to use is 2.
-    This is the default mode (so -m is optional). Also see: -n num_sources
+The BASH shell and either wget or curl must be installed. Most modern UNIX like systems come with BASH and wget pre-installed. wget and curl are both programs which download pages from the web. getip works equally well with them both. wget is used by default if both are installed on the system.
 
--f
-    Fast mode; get the IP address from just one source in order to get it more
-    quickly than in multi mode. Fast mode is not guaranteed to be faster than
-    multi mode but on average it will be. It is advisable that users only use
-    fast mode to confirm their IP address when it is already known, e.g.
-    checking a VPN connection. In some circumstances an incorrect IP address
-    can be returned in fast mode, see 'Notes On Modes' below.
+.SH DESCRIPTION
 
--c
-    Check mode; displays a table containing the url of each source, the IP
-    address that each returned (or a failure message), the time taken to
-    retrieve the IP address, and various statistics. Use to test the sources.
+getip is a BASH script used to retrieve the WAN IP address from behind a router using web sites (sources) which provide the IP address in plain text or HTML.
 
--u url
-    Test Url mode; tests an url for inclusion in the sources list. It will
-    display whether the url returns a single IP address (which is required for
-    inclusion in the sources list), multiple IP addresses, or no IP addresses
-    at all. To aid debugging it will list all IP addresses returned.
+From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the page, or an IP-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot version numbers so they can be ignored). In such cases an IP address fetching script could provide a user with an incorrect IP address. getip uses multi mode by default to prevent this from happening.
 
--n num_sources
-    Set the Number of sources to use in multi mode. The allowed range of values
-    is >=2 and <=5. The default value is 2.
+In multi mode the IP address is retrieved from multiple sources (default: 2) and compared, so that the correct IP address can be provided. Users are advised to use multi mode in preference to fast mode.
 
--t seconds
-    Set the Timeout for each source. This is not an overall timeout for the
-    script. When a source gives no response or is slow to respond, getip moves
-    on to the next source and this is the timeout in seconds for each one.
-    Note: Real numbers are permitted, e.g. 0.75, 1.5, .85, etc. The allowed
-    range of values is >=0.2 and <=30 (but these extremes are overkill).
+The getip script retrieves IPv4 addresses only and not IPv6 addresses.
 
-    The default timeouts are dependant on mode, in seconds they are:
-    Multi: $timeoutMultiMode, Fast: $timeoutFastMode, \
-Check: $timeoutCheckMode, Test Url: $timeoutTestUrlMode
+This script currently contains over 100 web sources.
 
--b
-    Bare output; display only the IP address and not the "IPv4 address" prefix.
+The list of web sources is randomized every time the script is run. This is so that undue pressure is not placed on servers near the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
 
--v
-    Verbose; display detailed information.
+.SH OPTIONS
+.BR
+In typical usage no options are necessary.
+.BR
 
--h
-    Help; display usage and help. Also: --help and -?
+.TP
+\fB\-m\fR
+Multi mode (default); fetch the IP address from multiple sources and check that they are all the same. In multi mode the default number of sources to use is 2. This is the default mode so \fB\-m\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
 
---version
-    Display version number.
+.TP
+\fB\-f\fR
+Fast mode; fetch the IP address from just one source in order to retrieve it more quickly than in multi mode. Fast mode is not guaranteed to be faster than multi mode but on average it will be slightly faster. It is advisable that users only use fast mode to confirm their IP address when it is already known, e.g. checking a VPN connection. In some circumstances an incorrect IP address can be returned in fast mode, see \fBDescription\fR section above.
 
+.TP
+\fB\-c\fR
+Check mode; displays a table containing the url of each source, the IP address that it returned (or a failure message), the time taken to retrieve the IP address, and various statistics. Used to test the sources list.
 
-Notes On Modes
---------------
+.TP
+\fB\-u\fR \fBurl\fR
+Test Url mode; tests an url for inclusion in the sources list. It will display whether the url returned a single IP address (which is required for inclusion in the sources list), multiple IP addresses, or no IP addresses at all. To aid debugging it will list all IP addresses returned.
 
-From time to time a web page used as a source will stop providing IP addresses,
-either temporarily or permanently, but an example IP address might remain on the
-page, or an IP-like software version number might be present embedded in the
-HTML, and which could be mistaken for a real IP address (although the script
-tries hard to spot version numbers so they can be ignored). In such cases an IP
-address fetching script could provide a user with an incorrect IP address. getip
-uses multi mode by default to prevent this from happening. Users are advised to
-use multi mode in preference to fast mode.
+.TP
+\fB\-n\fR \fBnum_sources\fR
+Sets the Number of sources to use in multi mode. The allowed range of values is >=2 and <=5. The default value is 2.
 
-Multi Mode
-----------
+.TP
+\fB\-t\fR \fBnum_seconds\fR
+Sets the Timeout for each source. This is not an overall timeout for the script. When a source gives no response or is slow to respond, getip moves on to the next source and this is the timeout in seconds for each one. Note: Real numbers are permitted, e.g. 0.75, 1.5, .85, etc. The allowed range of values is >=0.2 and <=30 (but these extremes are overkill).
 
-The default mode is multi mode, so the -m option is not needed.
+The default timeouts are dependant on mode, in seconds they are; multi mode 1, fast mode 0.75, check mode 10, test url mode 10.
 
-Multi mode gets the IP address from multiple web sources (2 by default) and
-checks that the retrieved IP addresses are all the same. It is a reliable way
-for users to check their external IP address without fear that an incorrect IP
-address will be returned because of the unlikelihood that 2 sources would both
-provide the same incorrect IP address. Note that if 2 sources did supply 2
-different IP addresses, then getip would discard them both and keep trying using
-other sources. The number of sources can be changed with the -n option.
+.TP
+\fB\-b\fR
+Bare output; display only the IP address and not the "IPv4 address:" prefix.
 
-Fast Mode
----------
+.TP
+\fB\-v\fR
+Verbose; display detailed information while the script runs.
 
-For the reasons outlined above, fast mode is only generally advisable to use
-when confirming an IP address that is already known, e.g. when connecting to a
-VPN. On average it is a little faster than multi mode, though it is not
-guaranteed to be so, and only likely to be a second or two faster. Fast mode
-should never be used when calling the getip script from inside another script.
+.TP
+\fB\-h\fR, \fB\-\-help\fR
+Help; display usage and help.
 
-Check Mode
-----------
+.TP
+\fB\-\-version\fR
+Display version number.
 
-Check mode can be used to display a table containing the url of each web source,
-the IP address that each returned (or a failure message), the time taken to
-retrieve the IP address, and various statistics. It is only useful as a test to
-see if the list of web sources used in the script are all functioning.
+.SH EXIT STATUS
+getip returns 0 on success, and non-zero on failure.
 
-getip will continue to function perfectly adequately with even 25% of the
-sources down. If more than 15% are down you may wish to download the latest
-version of the script. Experienced users can manually delete any sources which
-are not working from the sourceUrls list in the script.
+.SH BUGS
+No known bugs.
 
-Test Url Mode
--------------
+.SH HOMEPAGE
+https://github.com/mattst/getip
+.LP
+Feel free to submit new IP address providing web pages to be added to the sources list.
 
-Test url mode is designed to be used by developers only. It checks to see if a
-web page is suitable for adding to the sources list. Only web pages which supply
-a single valid IP address are suitable and they must be manually added to the
-sourceUrls list.
-
-
-Homepage: https://github.com/mattst/getip
-License:  GNU General Public License v.3
-EndOfDisplayUsageMessage
+.SH AUTHOR
+<mattst@i-dig.info>
+EOF
 }
 
 
@@ -534,9 +492,7 @@ Output_Error_Message()
 
     # The standard error message for all errors.
 
-    echo "getip v. $version - Get your IP address from the web." >&2
-    echo "Homepage: https://github.com/mattst/getip" >&2
-    echo "GNU General Public License v.3" >&2
+    echo "getip v. $version" >&2
     echo "" >&2
     echo "An error has occurred, use \"getip -h\" for usage and help." >&2
     echo "" >&2
@@ -1460,17 +1416,17 @@ fi
 
 # If verbose is set, echo various diagnostic information.
 if [ "$verbose" = "TRUE" ]; then
-    echo "Script: getip v. $version"
-    echo "Number of source urls: $urlArrayLength"
-    echo "Operation mode: $operationMode"
+    echo "Script Version:      $version"
+    echo "Total Source Urls:   $urlArrayLength"
+    echo "Operation Mode:      $operationMode"
     if [ "$operationMode" = "MULTI" ]; then
-        echo "Number of sources to use in multi mode: $numIpToUseForMulti"
+        echo "Num Sources to Use:  $numIpToUseForMulti"
     fi
     if [ "$operationMode" = "TESTURL" ]; then
-        echo "Url to test: $testUrlAddress"
+        echo "Url to Test:         $testUrlAddress"
     fi
-    echo "Timeout (seconds): $timeout"
-    echo "Web access utility: $urlDownloadProgram"
+    echo "Timeout (Seconds):   $timeout"
+    echo "Web Utility:         $urlDownloadProgram"
     echo ""
 fi
 
@@ -1488,7 +1444,7 @@ fi
 if [ "$operationMode" = "TESTURL" ]; then
 
     # 'Pretty print' the test results.
-    printf "%-18s%s\n" "Testing Url:" "$testUrlAddress"
+    printf "%-21s%s\n" "Testing Url:" "$testUrlAddress"
 
     # Create a temp file for Get_Ip_From_Url() to use. The options used are:
     # -q to fail silently on error and -t to use the system's temp directory.
@@ -1519,28 +1475,28 @@ if [ "$operationMode" = "TESTURL" ]; then
     # Handle the various return possibilities.
 
     if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
-        printf "%-18s%s\n" "Status:" "Success"
-        printf "%-18s%s\n" "Outcome:" "Url returned a single valid IP address"
-        printf "%-18s%s\n" "IP Address:" "$ipAddress"
+        printf "%-21s%s\n" "Status:" "Success"
+        printf "%-21s%s\n" "Outcome:" "Url returned a single valid IP address"
+        printf "%-21s%s\n" "IP Address:" "$ipAddress"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
-        printf "%-18s%s\n" "Status:" "Failure"
-        printf "%-18s%s\n" "Outcome:" "Url returned more than one valid IP address"
+        printf "%-21s%s\n" "Status:" "Failure"
+        printf "%-21s%s\n" "Outcome:" "Url returned more than one valid IP address"
         ipAddressCSV=$(echo "$ipAddress" | tr '\n' ' ')
-        printf "%-18s%s\n" "IP Addresses:" "$ipAddressCSV"
+        printf "%-21s%s\n" "IP Addresses:" "$ipAddressCSV"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
-        printf "%-18s%s\n" "Status:" "Failure"
-        printf "%-18s%s\n" "Outcome:" "Url did not return a valid IP address"
+        printf "%-21s%s\n" "Status:" "Failure"
+        printf "%-21s%s\n" "Outcome:" "Url did not return a valid IP address"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
-        printf "%-18s%s\n" "Status:" "Failure"
-        printf "%-18s%s\n" "Outcome:" "Server timed out"
+        printf "%-21s%s\n" "Status:" "Failure"
+        printf "%-21s%s\n" "Outcome:" "Server timed out"
     fi
 
     # Output the time taken and the current timeout value.
-    printf "%-18s%s\n" "Duration (secs):" "$timeTaken"
-    printf "%-18s%s\n" "Timeout  (secs):" "$timeout"
+    printf "%-21s%s\n" "Duration (Seconds):" "$timeTaken"
+    printf "%-21s%s\n" "Timeout  (Seconds):" "$timeout"
 
     # The exit point of the script in test url mode. Failure codes are not returned if a source
     # did not provide a single valid IP address. This is because test url mode is designed to see
@@ -1768,17 +1724,11 @@ done  # End of loop through $urlArray loop.
 # currently unavailable.
 if [ "$operationModeIsMultiOrFast" = "TRUE" ]; then
 
-    # If verbose is set...
-    if [ "$verbose" = "TRUE" ]; then
-        echo ""
-        echo "The script failed to get the IP address. The most likely reasons for this"
-        echo "failure are that there is currently no web access available to the computer,"
-        echo "some part of the security system is denying getip a web connection, or"
-        echo "possibly the timeout value has been set very low. If you have web access and"
-        echo "this script is very old, you could download the latest version of the script."
-    else
-        echo "FAILED"
-    fi
+    echo "The script failed to get the IP address. The most likely reasons for this"
+    echo "failure are that there is currently no web access available to the computer,"
+    echo "some part of the security system is denying getip a web connection, or"
+    echo "possibly the timeout value has been set very low. If you have web access and"
+    echo "this script is very old, you could download the latest version of the script."
 
     exit "$ExitStatusErrorMultiOrFastModeGettingIpFailed"
 fi
