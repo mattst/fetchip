@@ -307,14 +307,48 @@ sourceUrls=(
 # and new urls added without any risk to the array integrity or any significant speed penalty.
 
 # Create the 0 indexed $urlArray array from the urls in $sourceUrls.
-urlIndex="0"
-for sourceUrl in "${sourceUrls[@]}"; do
-    urlArray[$urlIndex]="$sourceUrl"
-    let 'urlIndex = urlIndex + 1'
-done
+# urlIndex="0"
+# for sourceUrl in "${sourceUrls[@]}"; do
+#     urlArray[$urlIndex]="$sourceUrl"
+#     let 'urlIndex = urlIndex + 1'
+# done
+
+# https://crius.feralhosting.com/gencon/SourceUrlsList
+
+sourceUrlsListUrl="https://crius.feralhosting.com/gencon/SourceUrlsList"
+
+# Create a temp file to store the online source url list.
+# -q to fail silently on error and -t to use the system's temp directory.
+# Don't use 'local' for 'tempFileNameForGetIpManPage' or $? won't work.
+tempFileNameForSourceUrls=$(mktemp -q -t "getip.sourceurls.tmp.XXXXXX")
+mktempFileCreationRetVal=$?
+
+if [ "$mktempFileCreationRetVal" -ne "0" ]; then
+    Output_Error_Message "TempFileCreationFailed"
+    exit "$ExitStatusErrorTempFileCreationFailed"
+fi
+
+wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
+     "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
+
+IFS=$'\n' read -d '' -r -a urlArray < "$tempFileNameForSourceUrls"
+
+urlArrayLength=${#urlArray[@]}
+echo "urlArrayLength: $urlArrayLength"
+
+# index=0
+# while [ "$index" -lt "$urlArrayLength" ]; do
+#     echo "$index: ${urlArray[$index]}"
+#     let "index = index + 1"
+# done
+
+# Delete the temp file.
+if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
+
+# exit
 
 # Holds the number of urls in $urlArray (0 indexed, final element is $urlArrayLength-1).
-urlArrayLength="$urlIndex"
+# urlArrayLength="$urlIndex"
 
 # $operationMode holds the operation mode, default 'MULTI'. Possible values: 'MULTI', 'FAST',
 # 'CHECK', or 'TESTURL'. 'MULTI' is the default mode.
@@ -390,8 +424,6 @@ Display_Usage_Message()
     # Don't use 'local' for 'tempFileNameForGetIpManPage' or $? won't work.
     tempFileNameForGetIpManPage=$(mktemp -q -t "getip.man.tmp.XXXXXX")
     local mktempFileCreationRetVal=$?
-
-    echo "mktempFileCreationRetVal: $mktempFileCreationRetVal"
 
     if [ "$mktempFileCreationRetVal" -ne "0" ]; then
         Output_Error_Message "TempFileCreationFailed"
