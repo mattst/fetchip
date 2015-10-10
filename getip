@@ -149,8 +149,6 @@
 ## START OF SCRIPT.
 ##
 
-# Set version number.
-version="0.9b"
 
 # The following list of web page urls all provide the IP address of the connecting machine. They
 # each return an IP address either on its own or within some plain text or HTML. Some 'show your
@@ -164,122 +162,122 @@ version="0.9b"
 # Note #2: Single quotes in urls should be replaced with %27.
 # e.g. http://www.dnswatch.info/what's-my-ip == http://www.dnswatch.info/what%27s-my-ip
 
-sourceUrls=(
-"http://aboutmyip.com/AboutMyXApp/AboutMyIP.jsp"
-"http://aruljohn.com/"
-"http://checkip.dyndns.com/"
-"http://checkip.dyndns.org"
-"http://cmyip.com/"
-"http://crymyip.com/"
-"http://en.dnstools.ch/show-my-ip.html"
-"http://en.utrace.de"
-"http://fmbip.com/"
-"http://geomaplookup.net/"
-"http://get.youripfast.com/?hl=en"
-"http://gmyip.com/"
-"http://groanmyip.com/"
-"http://i-dig.info/ip/showip.php"
-"http://icanhazip.com"
-"http://ifconfig.co/"
-"http://ip4.me/"
-"http://ip.appspot.com"
-"http://ip-check.info/?lang=en"
-"http://ipchicken.com"
-"http://ip.fruktsallad.net"
-"http://ipinfodb.com/my_ip_location.php"
-"http://ipinfo.info/html/my_ip_address.php"
-"http://iplookup.flashfxp.com"
-"http://ip-lookup.net/"
-"http://mxtoolbox.com/WhatIsMyIP/"
-"http://my-ip-address.com"
-"http://myip.dnsomatic.com"
-"http://myip.nmonitoring.com/"
-"http://myip.ru/"
-"http://network-tools.com"
-"http://networktools.nl"
-"http://passwordsgenerator.net/WhatIsMyIP/"
-"http://remote.12dt.com"
-"https://api.ipify.org?format=json"
-"https://encodable.com/ip_address/"
-"http://showip.net"
-"https://ipleak.net/"
-"http://smart-ip.net/"
-"http://submit.apnic.net/templates/yourip.html"
-"https://wtfismyip.com/"
-"https://www.astrill.com/what-is-my-ip-address.php"
-"https://www.dur.ac.uk/cis/network/findip/"
-"https://www.google.com/search?q=Your+public+IP+address&gws_rd=cr"
-"https://www.icuk.net/contact/ip.asp"
-"https://www.milonic.com/myipaddress.php"
-"https://www.name.com/ip"
-"https://www.overplay.net/vpn/ip-address/what-is-my-ip-address.php"
-"https://www.privateinternetaccess.com/pages/whats-my-ip/"
-"https://www.ultratools.com/tools/yourIPResult"
-"https://www.whatismybrowser.com/detect/what-is-my-ip-address"
-"https://www.whatsmydns.net/whats-my-ip-address.html"
-"http://tnx.nl/ip"
-"http://torvpn.com/myip.html"
-"http://webtools.csx.cam.ac.uk/myip/results.html"
-"http://whatismyipaddress.com/ip-lookup"
-"http://whatismyip.org/"
-"http://whatsmyuseragent.com/"
-"http://www.123myip.co.uk"
-"http://www.bobborst.com/tools/whatsmyip/"
-"http://www.displaymyip.com"
-"http://www.dnsstuff.com/"
-"http://www.dnswatch.info/what%27s-my-ip"
-"http://www.exadium.com/tools/myip/"
-"http://www.formyip.com/ipcountry.php"
-"http://www.geoip.co.uk/"
-"http://www.geoiptool.com"
-"http://www.getip.com"
-"http://www.howtofindmyipaddress.com"
-"http://www.infosniper.net/"
-"http://www.ip2location.com/"
-"http://www.ip-adress.com/"
-"http://www.ip-adress.eu/"
-"http://www.ipadr.xyz/"
-"http://www.ip.cc/index.php"
-"http://www.ipgoat.com"
-"http://www.ipgp.net/"
-"http://www.ipligence.com/whatsmyip"
-"http://www.iplocation.net"
-"http://www.ip-lookup.com"
-"http://www.ipnow.org"
-"http://www.ipnumber.eu/ip/"
-"http://www.iprivacytools.com/my-ip-address/"
-"http://www.iptrackeronline.com"
-"http://www.lawrencegoetz.com/programs/ipinfo/"
-"http://www.mediacollege.com/internet/utilities/show-ip.shtml"
-"http://www.moanmyip.com/"
-"http://www.mon-ip.com/en/my-ip/"
-"http://www.myglobalip.com/"
-"http://www.myipnumber.com/my-ip-address.asp"
-"http://www.nirsoft.net/show_my_ip_address.php"
-"http://www.shmyip.com"
-"http://www.showipinfo.net"
-"http://www.showmemyip.com"
-"http://www.showmyip.com.ar"
-"http://www.showmyip.co.uk"
-"http://www.show-my-ip.de/ipadresse.html"
-"http://www.showmyip.gr"
-"http://www.spyber.com/ip-lookup.php"
-"http://www.techweekeurope.co.uk/what-is-my-ip-address"
-"http://www.thinkbroadband.com/ip.html"
-"http://www.tracemyip.org"
-"http://www.urgentclick.com/whats-my-ip-address.php"
-"http://www.ventrilo.com/myip.php"
-"http://www.vermiip.es/show-my-ip/"
-"http://www.viewmyip.co.uk/"
-"http://www.webyield.net/cgi-bin/ip.cgi"
-"http://www.whatismyip.co.uk/"
-"http://www.whatismypublicip.com/"
-"http://www.whatsmyipaddress.net/"
-"http://www.whereisip.net/"
-"http://www.who.is"
-"http://www.whoismyisp.org/"
-"http://www.yougetsignal.com/what-is-my-ip-address/"
-);
+# sourceUrls=(
+# "http://aboutmyip.com/AboutMyXApp/AboutMyIP.jsp"
+# "http://aruljohn.com/"
+# "http://checkip.dyndns.com/"
+# "http://checkip.dyndns.org"
+# "http://cmyip.com/"
+# "http://crymyip.com/"
+# "http://en.dnstools.ch/show-my-ip.html"
+# "http://en.utrace.de"
+# "http://fmbip.com/"
+# "http://geomaplookup.net/"
+# "http://get.youripfast.com/?hl=en"
+# "http://gmyip.com/"
+# "http://groanmyip.com/"
+# "http://i-dig.info/ip/showip.php"
+# "http://icanhazip.com"
+# "http://ifconfig.co/"
+# "http://ip4.me/"
+# "http://ip.appspot.com"
+# "http://ip-check.info/?lang=en"
+# "http://ipchicken.com"
+# "http://ip.fruktsallad.net"
+# "http://ipinfodb.com/my_ip_location.php"
+# "http://ipinfo.info/html/my_ip_address.php"
+# "http://iplookup.flashfxp.com"
+# "http://ip-lookup.net/"
+# "http://mxtoolbox.com/WhatIsMyIP/"
+# "http://my-ip-address.com"
+# "http://myip.dnsomatic.com"
+# "http://myip.nmonitoring.com/"
+# "http://myip.ru/"
+# "http://network-tools.com"
+# "http://networktools.nl"
+# "http://passwordsgenerator.net/WhatIsMyIP/"
+# "http://remote.12dt.com"
+# "https://api.ipify.org?format=json"
+# "https://encodable.com/ip_address/"
+# "http://showip.net"
+# "https://ipleak.net/"
+# "http://smart-ip.net/"
+# "http://submit.apnic.net/templates/yourip.html"
+# "https://wtfismyip.com/"
+# "https://www.astrill.com/what-is-my-ip-address.php"
+# "https://www.dur.ac.uk/cis/network/findip/"
+# "https://www.google.com/search?q=Your+public+IP+address&gws_rd=cr"
+# "https://www.icuk.net/contact/ip.asp"
+# "https://www.milonic.com/myipaddress.php"
+# "https://www.name.com/ip"
+# "https://www.overplay.net/vpn/ip-address/what-is-my-ip-address.php"
+# "https://www.privateinternetaccess.com/pages/whats-my-ip/"
+# "https://www.ultratools.com/tools/yourIPResult"
+# "https://www.whatismybrowser.com/detect/what-is-my-ip-address"
+# "https://www.whatsmydns.net/whats-my-ip-address.html"
+# "http://tnx.nl/ip"
+# "http://torvpn.com/myip.html"
+# "http://webtools.csx.cam.ac.uk/myip/results.html"
+# "http://whatismyipaddress.com/ip-lookup"
+# "http://whatismyip.org/"
+# "http://whatsmyuseragent.com/"
+# "http://www.123myip.co.uk"
+# "http://www.bobborst.com/tools/whatsmyip/"
+# "http://www.displaymyip.com"
+# "http://www.dnsstuff.com/"
+# "http://www.dnswatch.info/what%27s-my-ip"
+# "http://www.exadium.com/tools/myip/"
+# "http://www.formyip.com/ipcountry.php"
+# "http://www.geoip.co.uk/"
+# "http://www.geoiptool.com"
+# "http://www.getip.com"
+# "http://www.howtofindmyipaddress.com"
+# "http://www.infosniper.net/"
+# "http://www.ip2location.com/"
+# "http://www.ip-adress.com/"
+# "http://www.ip-adress.eu/"
+# "http://www.ipadr.xyz/"
+# "http://www.ip.cc/index.php"
+# "http://www.ipgoat.com"
+# "http://www.ipgp.net/"
+# "http://www.ipligence.com/whatsmyip"
+# "http://www.iplocation.net"
+# "http://www.ip-lookup.com"
+# "http://www.ipnow.org"
+# "http://www.ipnumber.eu/ip/"
+# "http://www.iprivacytools.com/my-ip-address/"
+# "http://www.iptrackeronline.com"
+# "http://www.lawrencegoetz.com/programs/ipinfo/"
+# "http://www.mediacollege.com/internet/utilities/show-ip.shtml"
+# "http://www.moanmyip.com/"
+# "http://www.mon-ip.com/en/my-ip/"
+# "http://www.myglobalip.com/"
+# "http://www.myipnumber.com/my-ip-address.asp"
+# "http://www.nirsoft.net/show_my_ip_address.php"
+# "http://www.shmyip.com"
+# "http://www.showipinfo.net"
+# "http://www.showmemyip.com"
+# "http://www.showmyip.com.ar"
+# "http://www.showmyip.co.uk"
+# "http://www.show-my-ip.de/ipadresse.html"
+# "http://www.showmyip.gr"
+# "http://www.spyber.com/ip-lookup.php"
+# "http://www.techweekeurope.co.uk/what-is-my-ip-address"
+# "http://www.thinkbroadband.com/ip.html"
+# "http://www.tracemyip.org"
+# "http://www.urgentclick.com/whats-my-ip-address.php"
+# "http://www.ventrilo.com/myip.php"
+# "http://www.vermiip.es/show-my-ip/"
+# "http://www.viewmyip.co.uk/"
+# "http://www.webyield.net/cgi-bin/ip.cgi"
+# "http://www.whatismyip.co.uk/"
+# "http://www.whatismypublicip.com/"
+# "http://www.whatsmyipaddress.net/"
+# "http://www.whereisip.net/"
+# "http://www.who.is"
+# "http://www.whoismyisp.org/"
+# "http://www.yougetsignal.com/what-is-my-ip-address/"
+# );
 
 
 #
@@ -294,61 +292,19 @@ sourceUrls=(
 #
 
 
-# IMPORTANT:
-#
-# The Randomize_Url_List() function needs the url array to be INDEXED IN NUMERICAL SEQUENCE FROM 0
-# or it will not randomize the array correctly! The following loop takes the urls in $sourceUrls
-# and creates the $urlArray array which is indexed in numerical sequence from 0, and which will be
-# used during the script to access the various source urls. Why do it like this? Why not just
-# create a 0 indexed array of the urls in the first place? The answer is I did, but it made
-# removing no-longer-functioning urls a pain, because the index number sequence had to be manually
-# fixed. I reasoned that a mistake could easily be made. This method of using a loop to create the
-# 0 indexed $urlArray from the easy to edit $sourceUrls list allows bad urls to be quickly removed
-# and new urls added without any risk to the array integrity or any significant speed penalty.
+# Principal Variables.
 
-# Create the 0 indexed $urlArray array from the urls in $sourceUrls.
-# urlIndex="0"
-# for sourceUrl in "${sourceUrls[@]}"; do
-#     urlArray[$urlIndex]="$sourceUrl"
-#     let 'urlIndex = urlIndex + 1'
-# done
+# Holds the script version number.
+version="0.9b"
 
-# https://crius.feralhosting.com/gencon/SourceUrlsList
-
+# Holds the url of the list of the web pages used to retrieve the IP address from.
 sourceUrlsListUrl="https://crius.feralhosting.com/gencon/SourceUrlsList"
 
-# Create a temp file to store the online source url list.
-# -q to fail silently on error and -t to use the system's temp directory.
-# Don't use 'local' for 'tempFileNameForGetIpManPage' or $? won't work.
-tempFileNameForSourceUrls=$(mktemp -q -t "getip.sourceurls.tmp.XXXXXX")
-mktempFileCreationRetVal=$?
+# Array which holds the urls from $sourceUrlsListUrl - the array is populated below.
+urlArray=""
 
-if [ "$mktempFileCreationRetVal" -ne "0" ]; then
-    Output_Error_Message "TempFileCreationFailed"
-    exit "$ExitStatusErrorTempFileCreationFailed"
-fi
-
-wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
-     "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
-
-IFS=$'\n' read -d '' -r -a urlArray < "$tempFileNameForSourceUrls"
-
-urlArrayLength=${#urlArray[@]}
-echo "urlArrayLength: $urlArrayLength"
-
-# index=0
-# while [ "$index" -lt "$urlArrayLength" ]; do
-#     echo "$index: ${urlArray[$index]}"
-#     let "index = index + 1"
-# done
-
-# Delete the temp file.
-if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
-
-# exit
-
-# Holds the number of urls in $urlArray (0 indexed, final element is $urlArrayLength-1).
-# urlArrayLength="$urlIndex"
+# The number of urls in $urlArray (0 indexed, final element $urlArrayLength-1), set below.
+urlArrayLength="0"
 
 # $operationMode holds the operation mode, default 'MULTI'. Possible values: 'MULTI', 'FAST',
 # 'CHECK', or 'TESTURL'. 'MULTI' is the default mode.
@@ -406,8 +362,9 @@ ExitStatusErrorUserSetNumIpToUseForMultiAndInvalidMode="7"
 ExitStatusErrorOperationModeInvalid="8"
 ExitStatusErrorWgetAndCurlNotInstalled="9"
 ExitStatusErrorTempFileCreationFailed="10"
-ExitStatusErrorMultiOrFastModeGettingIpFailed="11"
-ExitStatusErrorCheckModeAllUrlsFailed="12"
+ExitStatusErrorDownloadWebSourceListFailed="11"
+ExitStatusErrorMultiOrFastModeGettingIpFailed="12"
+ExitStatusErrorCheckModeAllUrlsFailed="13"
 
 # Constants to hold the various values returned by the Get_Ip_From_Url() function.
 GetIpSingleValidIP="0"
@@ -415,12 +372,16 @@ GetIpNoValidIP="1"
 GetIpMultipleValidIP="2"
 GetIpTimedOut="3"
 
+# Set the user agent to use for web page downloads. The script should not try to hide that it is a
+# script, use a user agent header like googlebot's:
+# Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+userAgent="Mozilla/5.0 (compatible; getipscript/$version; +https://github.com/mattst/getip)"
+
 
 # Display help by redirecting the text of the man page to a temp file and displaying it using man.
 Display_Usage_Message()
 {
     # Create a temp file to store the man page here document.
-    # -q to fail silently on error and -t to use the system's temp directory.
     # Don't use 'local' for 'tempFileNameForGetIpManPage' or $? won't work.
     tempFileNameForGetIpManPage=$(mktemp -q -t "getip.man.tmp.XXXXXX")
     local mktempFileCreationRetVal=$?
@@ -644,6 +605,12 @@ Output_Error_Message()
         echo "incorrectly set, or with creating files in the standard '/tmp/' directory." >&2
     fi
 
+    # Creating the temp file failed.
+    if [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
+        echo "The getip script failed to download the web sources list from:" >&2
+        echo "$sourceUrlsListUrl" >&2
+    fi
+
     # In check mode all the urls failed.
     if [ "$errToDisplay" = "CheckModeAllUrlsFailed" ]; then
         echo "In check mode - the getip script has failed to get an IP address from every" >&2
@@ -671,6 +638,7 @@ Output_Error_Message()
 #Output_Error_Message "InvalidOperationMode" "NONE"
 #Output_Error_Message "WgetAndCurlNotInstalled"
 #Output_Error_Message "TempFileCreationFailed"
+#Output_Error_Message "DownloadWebSourceListFailed"
 #Output_Error_Message "CheckModeAllUrlsFailed"
 #exit 0
 
@@ -877,7 +845,7 @@ isWgetInstalled=$?
 hash curl > /dev/null 2>&1
 isCurlInstalled=$?
 
-# Decide which of wget or curl to use for downloading.
+# Decide whether to use wget or curl for web page downloading.
 
 # If both wget and curl are installed, use the default.
 if [ "$isWgetInstalled" -eq "0" -a "$isCurlInstalled" -eq "0" ]; then
@@ -895,6 +863,92 @@ elif [ "$isCurlInstalled" -eq "0" -a "$isWgetInstalled" -ne "0" ]; then
 else
     Output_Error_Message "WgetAndCurlNotInstalled"
     exit "$ExitStatusErrorWgetAndCurlNotInstalled"
+fi
+
+# If verbose is set, echo various diagnostic information.
+if [ "$verbose" = "TRUE" ]; then
+    echo "Script Version:        $version"
+    echo "Operation Mode:        $operationMode"
+    if [ "$operationMode" = "MULTI" ]; then
+        echo "Num Sources to Use:    $numIpToUseForMulti"
+    fi
+    if [ "$operationMode" = "TESTURL" ]; then
+        echo "Url to Test:          $testUrlAddress"
+    fi
+    echo "Timeout (Seconds):     $timeout"
+    echo "Web Download Utility:  $urlDownloadProgram"
+    echo ""
+fi
+
+# urlDownloadProgram="CURL"
+
+# Fetch the web sources list from $sourceUrlsListUrl and store them in the $urlArray array.
+
+if [ "$verbose" = "TRUE" ]; then
+    echo "Downloading the list of urls (the sources list)"
+fi
+
+# Create a temp file to store the online source url list file in.
+tempFileNameForSourceUrls=$(mktemp -q -t "getip.sourceurls.tmp.XXXXXX")
+mktempFileCreationRetVal=$?
+
+if [ "$mktempFileCreationRetVal" -ne "0" ]; then
+    Output_Error_Message "TempFileCreationFailed"
+    exit "$ExitStatusErrorTempFileCreationFailed"
+fi
+
+# Use wget to download the source url list file.
+if [ "$urlDownloadProgram" = "WGET" ]; then
+
+    wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
+         "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
+    wgetDownloadSourceUrlsListRetVal=$?
+
+    if [ "$wgetDownloadSourceUrlsListRetVal" -ne "0" ]; then
+        Output_Error_Message "DownloadWebSourceListFailed"
+        exit "$ExitStatusErrorDownloadWebSourceListFailed"
+    fi
+
+# Use curl to download the source url list file.
+elif [ "$urlDownloadProgram" = "CURL" ]; then
+
+    curl --silent --user-agent "$userAgent" "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
+    curlDownloadSourceUrlsListRetVal=$?
+
+    if [ "$curlDownloadSourceUrlsListRetVal" -ne "0" ]; then
+        Output_Error_Message "DownloadWebSourceListFailed"
+        exit "$ExitStatusErrorDownloadWebSourceListFailed"
+    fi
+fi
+
+# Read the urls from the source urls temp file into the $urlArray. Note: The Randomize_Url_List()
+# function needs the url array to be INDEXED IN NUMERICAL SEQUENCE FROM 0 or it will not randomize
+# the array correctly.
+
+urlIndex="0"
+
+while read -r line ; do
+
+    # Check if $line is an url by seeing if the first 4 chars are 'http'.
+    lineFirst4Chars=${line:0:4}
+    lineFirst4CharsLC=$(echo "$lineFirst4Chars" | tr '[:upper:]' '[:lower:]')
+
+    # If so add the url in $line to $urlArray.
+    if [ "$lineFirst4CharsLC" = "http" ]; then
+        urlArray[$urlIndex]="$line"
+        let 'urlIndex = urlIndex + 1'
+    fi
+
+done < "$tempFileNameForSourceUrls"
+
+# Set the length of the urlArray array (indexed from 0).
+urlArrayLength="$urlIndex"
+
+# Delete the temp file.
+if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
+
+if [ "$verbose" = "TRUE" ]; then
+    echo "Total Source Urls: $urlArrayLength"
 fi
 
 
@@ -1080,12 +1134,6 @@ Get_Ip_From_Url()
     # the timeout procedure. The use of disown, which removes a job from the shell's active jobs
     # table, is so that if the process is later killed (which it will be if it times out) then
     # no shell message is displayed.
-
-    # Some sources (very few) won't work without the user agent header being sent.
-    # We are not trying to hide that this is a script, use a user agent header like googlebot's:
-    # Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-    local userAgent="Mozilla/5.0 (compatible; getipscript/$version; \
-                                  +https://github.com/mattst/getip)"
 
     # Store the start time for the timeout. Note: %s seconds, %N nanoseconds.
     local timeoutStart=$(date +%s.%N)
@@ -1466,22 +1514,6 @@ else
     timeIpRetrieval="FALSE"
 fi
 
-# If verbose is set, echo various diagnostic information.
-if [ "$verbose" = "TRUE" ]; then
-    echo "Script Version:      $version"
-    echo "Total Source Urls:   $urlArrayLength"
-    echo "Operation Mode:      $operationMode"
-    if [ "$operationMode" = "MULTI" ]; then
-        echo "Num Sources to Use:  $numIpToUseForMulti"
-    fi
-    if [ "$operationMode" = "TESTURL" ]; then
-        echo "Url to Test:         $testUrlAddress"
-    fi
-    echo "Timeout (Seconds):   $timeout"
-    echo "Web Utility:         $urlDownloadProgram"
-    echo ""
-fi
-
 # Call the function which randomizes the $urlArray array, multi or fast mode only.
 if [ "$operationModeIsMultiOrFast" = "TRUE" ]; then
 
@@ -1498,9 +1530,7 @@ if [ "$operationMode" = "TESTURL" ]; then
     # 'Pretty print' the test results.
     printf "%-21s%s\n" "Testing Url:" "$testUrlAddress"
 
-    # Create a temp file for Get_Ip_From_Url() to use. The options used are:
-    # -q to fail silently on error and -t to use the system's temp directory.
-    # Don't use 'local' for 'tempFileNameForGetIpManPage' or $? won't work.
+    # Create a temp file for Get_Ip_From_Url() to use.
     tempFileNameForGetIp=$(mktemp -q -t "getip.tmp.XXXXXX")
     mktempFileCreationRetVal=$?
 
@@ -1591,9 +1621,7 @@ for url in "${urlArray[@]}"; do
         echo "Trying: $url"
     fi
 
-    # Create a temp file for Get_Ip_From_Url() to use. The options used are:
-    # -q to fail silently on error and -t to use the system's temp directory.
-    # Don't use 'local' for 'tempFileNameForGetIpManPage' or $? won't work.
+    # Create a temp file for Get_Ip_From_Url() to use.
     tempFileNameForGetIp=$(mktemp -q -t "getip.tmp.XXXXXX")
     mktempFileCreationRetVal=$?
 
