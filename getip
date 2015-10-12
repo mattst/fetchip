@@ -351,20 +351,18 @@ verbose="FALSE"
 userSetModesCounter="0"
 
 # Constants to hold the various exit statuses of the script.
-ExitStatusSuccess="0"
-ExitStatusErrorUrlArgInvalid="1"
-ExitStatusErrorNumSourcesArgInvalid="2"
-ExitStatusErrorTimeoutArgInvalid="3"
-ExitStatusErrorOptionInvalid="4"
-ExitStatusErrorArgMissing="5"
-ExitStatusErrorUserSetMoreThanOneMode="6"
-ExitStatusErrorUserSetNumIpToUseForMultiAndInvalidMode="7"
-ExitStatusErrorOperationModeInvalid="8"
-ExitStatusErrorWgetAndCurlNotInstalled="9"
-ExitStatusErrorTempFileCreationFailed="10"
-ExitStatusErrorDownloadWebSourceListFailed="11"
-ExitStatusErrorMultiOrFastModeGettingIpFailed="12"
-ExitStatusErrorCheckModeAllUrlsFailed="13"
+ExitStatusSuccess="1"
+ExitStatusErrorUrlArgInvalid="2"
+ExitStatusErrorNumSourcesArgInvalid="3"
+ExitStatusErrorTimeoutArgInvalid="4"
+ExitStatusErrorOptionInvalid="5"
+ExitStatusErrorArgMissing="6"
+ExitStatusErrorUserSetMoreThanOneMode="7"
+ExitStatusErrorWgetAndCurlNotInstalled="8"
+ExitStatusErrorTempFileCreationFailed="9"
+ExitStatusErrorDownloadWebSourceListFailed="10"
+ExitStatusErrorMultiOrFastModeGettingIpFailed="11"
+ExitStatusErrorCheckModeAllUrlsFailed="12"
 
 # Constants to hold the various values returned by the Get_Ip_From_Url() function.
 GetIpSingleValidIP="0"
@@ -372,10 +370,65 @@ GetIpNoValidIP="1"
 GetIpMultipleValidIP="2"
 GetIpTimedOut="3"
 
-# Set the user agent to use for web page downloads. The script should not try to hide that it is a
-# script, use a user agent header like googlebot's:
+# Set the user agent to use for web page downloads. The script does not try to hide that it is a
+# script. The user agent header is modelled on the one used by Google's 'googlebot':
 # Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 userAgent="Mozilla/5.0 (compatible; getipscript/$version; +https://github.com/mattst/getip)"
+
+
+# Function which sends the various error messages to STDERR.
+Output_Error_Message()
+{
+    # Assign $errToDisplay the value of the 1st function arg (NOT script arg).
+    local errToDisplay=$1
+
+    # Assign $additionalInfo the value of the 2nd function arg (NOT script arg).
+    # Some errors display a configurable piece of information, e.g. an option.
+    local additionalInfo=$2
+
+    if [ "$errToDisplay" = "ArgInvalid" ]; then
+        echo "The argument given to the $additionalInfo option is invalid." >&2
+
+    elif [ "$errToDisplay" = "OptionInvalid" ]; then
+        echo "An invalid option has been entered." >&2
+
+    elif [ "$errToDisplay" = "ArgMissing" ]; then
+        echo "The argument is missing for the option: -$additionalInfo" >&2
+
+    elif [ "$errToDisplay" = "UserSetMoreThanOneMode" ]; then
+        echo "Only one operation mode can be used at a time." >&2
+
+    elif [ "$errToDisplay" = "TempFileCreationFailed" ]; then
+        echo "Unable to create a temp file using 'mktemp'." >&2
+
+    elif [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
+        echo "Unable to download the list of web sources from:" >&2
+        echo "$sourceUrlsListUrl" >&2
+
+    elif [ "$errToDisplay" = "FailedToGetIPAddress" ]; then
+        echo "The script failed to get the IP address." >&2
+
+    elif [ "$errToDisplay" = "WgetAndCurlNotInstalled" ]; then
+        echo "The getip script requires either 'wget' or 'curl' to access the web, please" >&2
+        echo "install one of them in order to use this script. wget and curl are both" >&2
+        echo "programs that can retrieve web pages, and they are widely available for all" >&2
+        echo "UNIX/Linux based systems. The getip script works equally well with either." >&2
+    fi
+
+    echo "" >&2
+    echo "Use \"getip -h\" for usage and help." >&2
+}
+
+# Test error messages:
+# Output_Error_Message "ArgInvalid" "-u"
+# Output_Error_Message "OptionInvalid"
+# Output_Error_Message "ArgMissing" "t"
+# Output_Error_Message "UserSetMoreThanOneMode"
+# Output_Error_Message "TempFileCreationFailed"
+# Output_Error_Message "DownloadWebSourceListFailed"
+# Output_Error_Message "FailedToGetIPAddress"
+# Output_Error_Message "WgetAndCurlNotInstalled"
+# exit 0
 
 
 # Display help by redirecting the text of the man page to a temp file and displaying it using man.
@@ -493,156 +546,6 @@ EOF
 }
 
 
-# Function which sends the various error messages to STDERR.
-Output_Error_Message()
-{
-    # Assign $errToDisplay the value of the 1st function arg (NOT script arg).
-    local errToDisplay=$1
-
-    # Assign $additionalInfo the value of the 2nd function arg (NOT script arg).
-    # Some errors will need some extra information to be displayed.
-    local additionalInfo=$2
-
-    # The standard error message for all errors.
-
-    echo "getip v. $version" >&2
-    echo "" >&2
-    echo "An error has occurred, use \"getip -h\" for usage and help." >&2
-    echo "" >&2
-
-    # The error messages:
-
-    # The arg given to the -u option is invalid.
-    if [ "$errToDisplay" = "UrlArgInvalid" ]; then
-        echo "The argument given to the -u option is invalid." >&2
-        echo "" >&2
-        echo "The \"-u\" option must be followed by the web url to test." >&2
-        echo "The url must begin with the letters 'http'." >&2
-        echo "" >&2
-        echo "e.g. getip -u \"http://www.web.org/url/to/check/ip.html\"" >&2
-    fi
-
-    # The arg given to the -n option is invalid.
-    if [ "$errToDisplay" = "NumSourcesArgInvalid" ]; then
-        echo "The argument given to the -n option is invalid: $additionalInfo" >&2
-        echo "" >&2
-        echo "The \"-n\" option sets the number of sources to use for verification in" >&2
-        echo "multi mode and it requires a positive number in the range >= 2 and <= 5." >&2
-        echo "The default number of sources to use for verification is 2." >&2
-        echo "" >&2
-        echo "e.g. \"getip -n 2\", \"getip -n 3\", etc." >&2
-    fi
-
-    # The arg given to the -t option is invalid.
-    if [ "$errToDisplay" = "TimeoutArgInvalid" ]; then
-        echo "The argument given to the -t option is invalid: $additionalInfo" >&2
-        echo "" >&2
-        echo "The \"-t\" option sets the timeout value in seconds for each source." >&2
-        echo "It requires the number of seconds (real numbers are permitted)." >&2
-        echo "The valid range is between >=0.2 and <=30 although for multi and" >&2
-        echo "fast modes a value between >=0.75 and <=3 is suggested." >&2
-        echo "See help for the default timeout values of the various modes." >&2
-        echo "" >&2
-        echo "e.g. \"getip -t 1\", \"getip -t 0.75\", \"getip -t 2.5\", etc." >&2
-    fi
-
-    # The option entered is invalid.
-    if [ "$errToDisplay" = "OptionInvalid" ]; then
-        echo "An invalid option has been entered:" >&2
-        echo "" >&2
-        echo "Usage: getip [-m | -f | -c] [-t timeout_secs] [-n num_sources] [-v] [-h]" >&2
-    fi
-
-    # The arg is missing for a option that requires an arg.
-    if [ "$errToDisplay" = "ArgMissing" ]; then
-        echo "The argument is missing for the option: -$additionalInfo" >&2
-        echo "" >&2
-        echo "Usage: getip [-m | -f | -c] [-t timeout_secs] [-n num_sources] [-v] [-h]" >&2
-    fi
-
-    # More than 1 mode has been set on the command line.
-    if [ "$errToDisplay" = "UserSetMoreThanOneMode" ]; then
-        echo "More than 1 operation mode has been entered. Only 1 mode can be used at a" >&2
-        echo "time, one of: multi (-m), fast (-f), check (-c), or test url (-u url)." >&2
-        echo "Multi is the default mode." >&2
-        echo "" >&2
-        echo "Usage: getip [-m | -f | -c] [-t timeout_secs] [-n num_sources] [-v] [-h]" >&2
-    fi
-
-    # The number of sources to use in multi mode has been set along with an invalid mode.
-    if [ "$errToDisplay" = "UserSetNumIpToUseForMultiAndInvalidMode" ]; then
-        echo "The number of sources to use for verification in multi mode has been set using" >&2
-        echo "\"-n num\" but a different mode has also been set. \"-n num\" can only be used" >&2
-        echo "with multi mode, it is incompatible with the other modes. Multi mode is the" >&2
-        echo "default mode so \"-n num\" can be used alone or optionally with \"-m\"." >&2
-        echo "" >&2
-        echo "e.g. \"getip -n 3\", \"getip -m -n 4\", etc." >&2
-    fi
-
-    # Somehow (user editing) an invalid operation mode has been set.
-    if [ "$errToDisplay" = "InvalidOperationMode" ]; then
-        echo "Invalid operation mode: $additionalInfo" >&2
-        echo "" >&2
-        echo "Someone has edited the getip script and made an error when setting the" >&2
-        echo "operation mode variable, it is not set to a valid operation mode." >&2
-    fi
-
-    # Neither wget nor curl are installed on the OS.
-    if [ "$errToDisplay" = "WgetAndCurlNotInstalled" ]; then
-        echo "The getip script requires either 'wget' or 'curl' to access the web, please" >&2
-        echo "install one of them in order to use this script. Both wget and curl are" >&2
-        echo "programs that can retrieve web pages, and they are widely available for all" >&2
-        echo "UNIX/Linux based systems. The getip script works equally well with either." >&2
-    fi
-
-    # Creating the temp file failed.
-    if [ "$errToDisplay" = "TempFileCreationFailed" ]; then
-        echo "The getip script failed to create a required temporary file." >&2
-        echo "" >&2
-        echo "The script uses 'mktemp' to create temporary files. It is possible that mktemp" >&2
-        echo "is not on your system although it is a standard component of UNIX/Linux based" >&2
-        echo "systems. There may be a problem with the environment variable \$TMPDIR being" >&2
-        echo "incorrectly set, or with creating files in the standard '/tmp/' directory." >&2
-    fi
-
-    # Creating the temp file failed.
-    if [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
-        echo "The getip script failed to download the web sources list from:" >&2
-        echo "$sourceUrlsListUrl" >&2
-    fi
-
-    # In check mode all the urls failed.
-    if [ "$errToDisplay" = "CheckModeAllUrlsFailed" ]; then
-        echo "In check mode - the getip script has failed to get an IP address from every" >&2
-        echo "single one of the web sources (there are currently $urlArrayLength)." >&2
-        echo "" >&2
-        echo "The most likely reasons for this failure are that there is currently no web" >&2
-        echo "access available to the computer, some part of the security system is denying" >&2
-        echo "getip a web connection, or possibly the timeout value has been set very low." >&2
-        echo "Diagnosing the problem further than that is beyond the scope of this error" >&2
-        echo "message, in short: you are on your own." >&2
-        echo "" >&2
-        echo "P.S. If you have web access and this script is very old, you could download" >&2
-        echo "the latest version of the script from the url above, otherwise YAOYO." >&2
-    fi
-}
-
-# Test error messages:
-#Output_Error_Message "UrlArgInvalid"
-#Output_Error_Message "NumSourcesArgInvalid" "8"
-#Output_Error_Message "TimeoutArgInvalid" "60"
-#Output_Error_Message "OptionInvalid"
-#Output_Error_Message "ArgMissing" "t"
-#Output_Error_Message "UserSetMoreThanOneMode"
-#Output_Error_Message "UserSetNumIpToUseForMultiAndInvalidMode"
-#Output_Error_Message "InvalidOperationMode" "NONE"
-#Output_Error_Message "WgetAndCurlNotInstalled"
-#Output_Error_Message "TempFileCreationFailed"
-#Output_Error_Message "DownloadWebSourceListFailed"
-#Output_Error_Message "CheckModeAllUrlsFailed"
-#exit 0
-
-
 # Before handling the arguments with getopts, check for long options:
 
 # Check if the first arg is "--help", if so display help and exit (-h is handled by getopts).
@@ -691,7 +594,7 @@ while getopts ":cfmu:bvhn:t:" option; do
             urlFirst4CharsLowerCase=$(echo "$urlFirst4Chars" | tr '[:upper:]' '[:lower:]')
 
             if [ "$urlFirst4CharsLowerCase" != "http" ]; then
-                Output_Error_Message "UrlArgInvalid"
+                Output_Error_Message "ArgInvalid" "-u"
                 exit "$ExitStatusErrorUrlArgInvalid"
             fi
             ;;
@@ -726,7 +629,7 @@ while getopts ":cfmu:bvhn:t:" option; do
 
             # A single digit in range has not been entered.
             if [ "$isNumInRange" != "SINGLE_DIGIT_IN_RANGE" ]; then
-                Output_Error_Message "NumSourcesArgInvalid" "$numIpToUseForMulti"
+                Output_Error_Message "ArgInvalid" "-n"
                 exit "$ExitStatusErrorNumSourcesArgInvalid"
             fi
             ;;
@@ -742,7 +645,7 @@ while getopts ":cfmu:bvhn:t:" option; do
             awkIsNumRetVal=$(echo "$timeoutSecondsArg" | awk "$awkIsNum")
 
             if [ "$awkIsNumRetVal" = "NotNum" ]; then
-                Output_Error_Message "TimeoutArgInvalid" "$timeoutSecondsArg"
+                Output_Error_Message "ArgInvalid" "-t"
                 exit "$ExitStatusErrorTimeoutArgInvalid"
             fi
 
@@ -757,7 +660,7 @@ while getopts ":cfmu:bvhn:t:" option; do
 
             # A positive number in range has not been entered.
             if [ "$bcExpIsNumInRangeRetVal" -eq "1" ]; then
-                Output_Error_Message "TimeoutArgInvalid" "$timeoutSecondsArg"
+                Output_Error_Message "ArgInvalid" "-t"
                 exit "$ExitStatusErrorTimeoutArgInvalid"
             fi
             ;;
@@ -798,17 +701,7 @@ if [ "$userSetModesCounter" -gt "1" ]; then
     exit "$ExitStatusErrorUserSetMoreThanOneMode"
 fi
 
-# If the user set the number of sources to use in multi mode and also set the mode to fast,
-# check, or test url mode, display error and exit.
-if [ "$operationMode" != "MULTI" ]; then
-    if [ "$userSetNumIpToUseForMulti" = "TRUE" ]; then
-        Output_Error_Message "UserSetNumIpToUseForMultiAndInvalidMode"
-        exit "$ExitStatusErrorUserSetNumIpToUseForMultiAndInvalidMode"
-    fi
-fi
-
-# Set the appropriate $timeout and check that the operation mode is valid.
-
+# Set the appropriate $timeout.
 if [ "$operationMode" = "FAST" ]; then
     timeout="$timeoutFastMode"
 elif [ "$operationMode" = "MULTI" ]; then
@@ -817,9 +710,6 @@ elif [ "$operationMode" = "CHECK" ]; then
     timeout="$timeoutCheckMode"
 elif [ "$operationMode" = "TESTURL" ]; then
     timeout="$timeoutTestUrlMode"
-else
-    Output_Error_Message "InvalidOperationMode" "$operationMode"
-    exit "$ExitStatusErrorOperationModeInvalid"
 fi
 
 # If the user set the timeout on the command line then use that instead of the default.
@@ -1802,16 +1692,9 @@ done  # End of loop through $urlArray loop.
 
 
 # If operating in multi or fast mode, then if this section of the script is reached then the
-# script failed to supply a valid IP address. This would typically indicate that web access is
-# currently unavailable.
+# script failed to supply a valid IP address.
 if [ "$operationModeIsMultiOrFast" = "TRUE" ]; then
-
-    echo "The script failed to get the IP address. The most likely reasons for this"
-    echo "failure are that there is currently no web access available to the computer,"
-    echo "some part of the security system is denying getip a web connection, or"
-    echo "possibly the timeout value has been set very low. If you have web access and"
-    echo "this script is very old, you could download the latest version of the script."
-
+    Output_Error_Message "FailedToGetIPAddress"
     exit "$ExitStatusErrorMultiOrFastModeGettingIpFailed"
 fi
 
@@ -1821,7 +1704,7 @@ if [ "$operationMode" = "CHECK" ]; then
 
     # Write an error message if all the urls failed.
     if [ "$statsTotalInValidIp" -eq "$urlArrayLength" ]; then
-        Output_Error_Message "CheckModeAllUrlsFailed"
+        Output_Error_Message "FailedToGetIPAddress"
         exit "$ExitStatusErrorCheckModeAllUrlsFailed"
     fi
 
