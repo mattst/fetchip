@@ -1,3 +1,5 @@
+# Source urls list for getip, see: https://github.com/mattst/getip
+
 http://aboutmyip.com/AboutMyXApp/AboutMyIP.jsp
 http://aruljohn.com/
 http://checkip.dyndns.com/
@@ -112,3 +114,5 @@ http://www.whereisip.net/
 http://www.who.is
 http://www.whoismyisp.org/
 http://www.yougetsignal.com/what-is-my-ip-address/
+
+# End of list.
