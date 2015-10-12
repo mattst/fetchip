@@ -1,4 +1,18 @@
-# Source urls list for getip, see: https://github.com/mattst/getip
+#
+# Source urls list for the getip script. See: https://github.com/mattst/getip
+#
+# The following list of web page urls all provide the IP address of the connecting machine. They
+# each return an IP address either on its own or within some plain text or HTML. Some 'show your
+# IP address' web pages have an example IP address on the page - such web pages should not be
+# added. Note that pages which contain more than 1 unique IP address would be ignored by getip,
+# they would not cause the script to supply the wrong IP address.
+#
+# Note #1: When adding an url be careful of any trailing '/'s at the end of urls. In a few cases
+# it is essential that they are there or that they are not there, so paste accurately.
+#
+# Note #2: Single quotes in urls should be replaced with %27.
+# e.g. http://www.dnswatch.info/what's-my-ip == http://www.dnswatch.info/what%27s-my-ip
+#
 
 http://aboutmyip.com/AboutMyXApp/AboutMyIP.jsp
 http://aruljohn.com/

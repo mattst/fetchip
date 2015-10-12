@@ -16,7 +16,7 @@
 # The complete list of all utilities and Bash shell commands used by the getip script:
 #
 # awk, bc, curl, date, disown, echo, exit, getopts, grep, hash, kill, man, mktemp, printf, ps,
-# $RANDOM, rm, sed, sort, tr, uniq, unset, wc, wget. [wget or curl required, not both.]
+# $RANDOM, read, rm, sed, sort, tr, uniq, unset, wc, wget. [wget or curl required, not both.]
 #
 # With the exception of wget and curl all of the above utilities and commands are expected to exist
 # on all modern UNIX like operating systems. If neither wget nor curl are installed the script will
@@ -141,155 +141,11 @@
 #
 # Outputs program usage and help then exits.
 #
-#
-
 
 
 ##
 ## START OF SCRIPT.
 ##
-
-
-# The following list of web page urls all provide the IP address of the connecting machine. They
-# each return an IP address either on its own or within some plain text or HTML. Some 'show your
-# IP address' web pages have an example IP address on the page - such web pages should not be
-# added. Note that pages which contain more than 1 unique IP address would be ignored by getip,
-# they would not cause the script to supply the wrong IP address.
-
-# Note #1: Be careful when editing of trailing '/'s at the end of urls. In very few cases it is
-# essential that they are there or that they are not there, so paste accurately.
-
-# Note #2: Single quotes in urls should be replaced with %27.
-# e.g. http://www.dnswatch.info/what's-my-ip == http://www.dnswatch.info/what%27s-my-ip
-
-# sourceUrls=(
-# "http://aboutmyip.com/AboutMyXApp/AboutMyIP.jsp"
-# "http://aruljohn.com/"
-# "http://checkip.dyndns.com/"
-# "http://checkip.dyndns.org"
-# "http://cmyip.com/"
-# "http://crymyip.com/"
-# "http://en.dnstools.ch/show-my-ip.html"
-# "http://en.utrace.de"
-# "http://fmbip.com/"
-# "http://geomaplookup.net/"
-# "http://get.youripfast.com/?hl=en"
-# "http://gmyip.com/"
-# "http://groanmyip.com/"
-# "http://i-dig.info/ip/showip.php"
-# "http://icanhazip.com"
-# "http://ifconfig.co/"
-# "http://ip4.me/"
-# "http://ip.appspot.com"
-# "http://ip-check.info/?lang=en"
-# "http://ipchicken.com"
-# "http://ip.fruktsallad.net"
-# "http://ipinfodb.com/my_ip_location.php"
-# "http://ipinfo.info/html/my_ip_address.php"
-# "http://iplookup.flashfxp.com"
-# "http://ip-lookup.net/"
-# "http://mxtoolbox.com/WhatIsMyIP/"
-# "http://my-ip-address.com"
-# "http://myip.dnsomatic.com"
-# "http://myip.nmonitoring.com/"
-# "http://myip.ru/"
-# "http://network-tools.com"
-# "http://networktools.nl"
-# "http://passwordsgenerator.net/WhatIsMyIP/"
-# "http://remote.12dt.com"
-# "https://api.ipify.org?format=json"
-# "https://encodable.com/ip_address/"
-# "http://showip.net"
-# "https://ipleak.net/"
-# "http://smart-ip.net/"
-# "http://submit.apnic.net/templates/yourip.html"
-# "https://wtfismyip.com/"
-# "https://www.astrill.com/what-is-my-ip-address.php"
-# "https://www.dur.ac.uk/cis/network/findip/"
-# "https://www.google.com/search?q=Your+public+IP+address&gws_rd=cr"
-# "https://www.icuk.net/contact/ip.asp"
-# "https://www.milonic.com/myipaddress.php"
-# "https://www.name.com/ip"
-# "https://www.overplay.net/vpn/ip-address/what-is-my-ip-address.php"
-# "https://www.privateinternetaccess.com/pages/whats-my-ip/"
-# "https://www.ultratools.com/tools/yourIPResult"
-# "https://www.whatismybrowser.com/detect/what-is-my-ip-address"
-# "https://www.whatsmydns.net/whats-my-ip-address.html"
-# "http://tnx.nl/ip"
-# "http://torvpn.com/myip.html"
-# "http://webtools.csx.cam.ac.uk/myip/results.html"
-# "http://whatismyipaddress.com/ip-lookup"
-# "http://whatismyip.org/"
-# "http://whatsmyuseragent.com/"
-# "http://www.123myip.co.uk"
-# "http://www.bobborst.com/tools/whatsmyip/"
-# "http://www.displaymyip.com"
-# "http://www.dnsstuff.com/"
-# "http://www.dnswatch.info/what%27s-my-ip"
-# "http://www.exadium.com/tools/myip/"
-# "http://www.formyip.com/ipcountry.php"
-# "http://www.geoip.co.uk/"
-# "http://www.geoiptool.com"
-# "http://www.getip.com"
-# "http://www.howtofindmyipaddress.com"
-# "http://www.infosniper.net/"
-# "http://www.ip2location.com/"
-# "http://www.ip-adress.com/"
-# "http://www.ip-adress.eu/"
-# "http://www.ipadr.xyz/"
-# "http://www.ip.cc/index.php"
-# "http://www.ipgoat.com"
-# "http://www.ipgp.net/"
-# "http://www.ipligence.com/whatsmyip"
-# "http://www.iplocation.net"
-# "http://www.ip-lookup.com"
-# "http://www.ipnow.org"
-# "http://www.ipnumber.eu/ip/"
-# "http://www.iprivacytools.com/my-ip-address/"
-# "http://www.iptrackeronline.com"
-# "http://www.lawrencegoetz.com/programs/ipinfo/"
-# "http://www.mediacollege.com/internet/utilities/show-ip.shtml"
-# "http://www.moanmyip.com/"
-# "http://www.mon-ip.com/en/my-ip/"
-# "http://www.myglobalip.com/"
-# "http://www.myipnumber.com/my-ip-address.asp"
-# "http://www.nirsoft.net/show_my_ip_address.php"
-# "http://www.shmyip.com"
-# "http://www.showipinfo.net"
-# "http://www.showmemyip.com"
-# "http://www.showmyip.com.ar"
-# "http://www.showmyip.co.uk"
-# "http://www.show-my-ip.de/ipadresse.html"
-# "http://www.showmyip.gr"
-# "http://www.spyber.com/ip-lookup.php"
-# "http://www.techweekeurope.co.uk/what-is-my-ip-address"
-# "http://www.thinkbroadband.com/ip.html"
-# "http://www.tracemyip.org"
-# "http://www.urgentclick.com/whats-my-ip-address.php"
-# "http://www.ventrilo.com/myip.php"
-# "http://www.vermiip.es/show-my-ip/"
-# "http://www.viewmyip.co.uk/"
-# "http://www.webyield.net/cgi-bin/ip.cgi"
-# "http://www.whatismyip.co.uk/"
-# "http://www.whatismypublicip.com/"
-# "http://www.whatsmyipaddress.net/"
-# "http://www.whereisip.net/"
-# "http://www.who.is"
-# "http://www.whoismyisp.org/"
-# "http://www.yougetsignal.com/what-is-my-ip-address/"
-# );
-
-
-#
-# New urls tested and working - add them:
-#
-# None at present, done to Google search of "my ip address" (not exact phrase) up to page 20.
-#
-# Removed but listed here for possible future reinclusion:
-#
-# "http://ifconfig.me/ip"               - usually (but not always) very slow 5-10+ secs.
-# "http://www.whoismyisp.org/"          - usually (but not always) very slow 5-10+ secs.
-#
 
 
 # Principal Variables.
@@ -340,7 +196,7 @@ userSetNumIpToUseForMulti="FALSE"
 # Flag variable to hold if the user has set a timeout (the -t option).
 userSetTimeout="FALSE"
 
-# Flag variable to hold if the user has set the bare output option.
+# Flag variable to hold if the user has set the bare output option (the -b option).
 bareOutput="FALSE"
 
 # Flag variable to hold if the user has turned on verbose reporting (the -v option).
@@ -351,18 +207,19 @@ verbose="FALSE"
 userSetModesCounter="0"
 
 # Constants to hold the various exit statuses of the script.
-ExitStatusSuccess="1"
-ExitStatusErrorUrlArgInvalid="2"
-ExitStatusErrorNumSourcesArgInvalid="3"
-ExitStatusErrorTimeoutArgInvalid="4"
-ExitStatusErrorOptionInvalid="5"
-ExitStatusErrorArgMissing="6"
-ExitStatusErrorUserSetMoreThanOneMode="7"
-ExitStatusErrorWgetAndCurlNotInstalled="8"
-ExitStatusErrorTempFileCreationFailed="9"
-ExitStatusErrorDownloadWebSourceListFailed="10"
-ExitStatusErrorMultiOrFastModeGettingIpFailed="11"
-ExitStatusErrorCheckModeAllUrlsFailed="12"
+# Careful using ST's InsertNums here, success must be 0 not 1.
+ExitStatusSuccess="0"
+ExitStatusErrorUrlArgInvalid="1"
+ExitStatusErrorNumSourcesArgInvalid="2"
+ExitStatusErrorTimeoutArgInvalid="3"
+ExitStatusErrorOptionInvalid="4"
+ExitStatusErrorArgMissing="5"
+ExitStatusErrorUserSetMoreThanOneMode="6"
+ExitStatusErrorWgetAndCurlNotInstalled="7"
+ExitStatusErrorTempFileCreationFailed="8"
+ExitStatusErrorDownloadWebSourceListFailed="9"
+ExitStatusErrorMultiOrFastModeGettingIpFailed="10"
+ExitStatusErrorCheckModeAllUrlsFailed="11"
 
 # Constants to hold the various values returned by the Get_Ip_From_Url() function.
 GetIpSingleValidIP="0"
@@ -558,7 +415,6 @@ elif [ "$1" = "--version" ]; then
     echo "getip v. $version"
     exit "$ExitStatusSuccess"
 fi
-
 
 # Use getopts to handle the command line arguments. ToDo: Add long option support.
 while getopts ":cfmu:bvhn:t:" option; do
@@ -770,8 +626,6 @@ if [ "$verbose" = "TRUE" ]; then
     echo ""
 fi
 
-# urlDownloadProgram="CURL"
-
 # Fetch the web sources list from $sourceUrlsListUrl and store them in the $urlArray array.
 
 if [ "$verbose" = "TRUE" ]; then
@@ -838,7 +692,7 @@ urlArrayLength="$urlIndex"
 if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
 
 if [ "$verbose" = "TRUE" ]; then
-    echo "Total Source Urls: $urlArrayLength"
+    echo "Total Number of Source Urls: $urlArrayLength"
 fi
 
 
@@ -846,8 +700,7 @@ fi
 # sensible to randomize the sources so as not to place undue pressure on any one server. This is
 # an implementation of the Knuth shuffle algorithm (aka Fisher-Yates shuffle), which is a very
 # efficient randomizer, needing just one pass through an array, so time complexity is: O(n)
-# The function takes ~40 ms on a low-level PC with 51 elements in the $urlArray array.
-# More information on the Knuth shuffle, see here: http://en.wikipedia.org/wiki/Knuth_shuffle
+# Get more information on the Knuth shuffle here: http://en.wikipedia.org/wiki/Knuth_shuffle
 # IMPORTANT: THE $urlArray ARRAY MUST BE INDEXED IN NUMERICAL SEQUENCE FROM 0 FOR THIS FUNCTION.
 Randomize_Url_List()
 {
@@ -855,7 +708,7 @@ Randomize_Url_List()
     local randMax="32768"
 
     # Start at the number of items in the array (i.e. final element's index + 1).
-    local index=$urlArrayLength
+    local index="$urlArrayLength"
 
     # Loop down through the array randomly swapping the current element with another randomly
     # chosen element (possibly itself). The use of >1 needs a moment to understand... if instead
@@ -870,9 +723,9 @@ Randomize_Url_List()
         local highestAcceptableRandNum=$(echo "$bcExpHighestAcceptableRandNum" | bc)
 
         # Get a random number within the modulo bias avoidance range.
-        local randNum=$RANDOM
+        local randNum="$RANDOM"
         while [ "$randNum" -gt "$highestAcceptableRandNum" ]; do
-            randNum=$RANDOM
+            randNum="$RANDOM"
         done
 
         # Force the random number into the range 0..index-1.
@@ -1484,18 +1337,6 @@ multiIpList=""
 # Counter to hold how many IP addresses have so far been retrieved in multi mode.
 multiIpCounter="0"
 
-# For testing.
-#multiIpList[0]="192.111.111.111"
-#let "multiIpCounter = multiIpCounter + 1"
-
-# For testing.
-#urlArray[0]="http://www.gencon.crius.feralhosting.com/iptest1.html"
-#urlArray[0]="http://ipinfo.info/html/my_ip_address.php"
-#urlArray[1]="http://torvpn.com/myip.html"
-
-# For testing.
-#numIpToUseForMulti=10
-
 # The script's main loop iterates through the urls in the $urlArray array. If in multi or fast mode
 # the script will exit from within this loop if the IP address is successfully retrieved (and, if
 # in multi mode, then verified). If in check mode the loop will iterate through to completion.
@@ -1555,11 +1396,9 @@ for url in "${urlArray[@]}"; do
         ipStatusVerbose="Source failed: server timed out"
     fi
 
-    # If in check mode or verbose is set then time the url download.
-    if [ "$timeIpRetrieval" = "TRUE" ]; then timeStop=$(date +%s.%N); fi
-
     # If in check mode or verbose is set, calculate the time taken (reduce to 3 decimal places).
     if [ "$timeIpRetrieval" = "TRUE" ]; then
+        timeStop=$(date +%s.%N)
         timeTaken=$(printf "%.3F" $(echo "$timeStop - $timeStart" | bc -l))
     fi
 
@@ -1718,4 +1557,3 @@ exit "$ExitStatusSuccess"
 ##
 ## END OF SCRIPT.
 ##
-
