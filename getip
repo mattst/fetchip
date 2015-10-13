@@ -3,12 +3,11 @@
 #
 # Name:             getip
 # Description:      Script to retrieve an external IPv4 address from IP providing web sites.
-# Requirements:     UNIX / Linux / Bash / Requires either curl or wget to be installed.
-# Usage:            getip [-m | -f | -c | -u url] [-n num_sources] [-t timeout_secs] [-v] [-h]
+# Requirements:     UNIX/Linux, Bash, either curl or wget.
+# Usage:            getip [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-b] [-v] [-h]
 # Exit Status:      0 on success, and non-zero on failure.
 # Author:           mattst@i-dig.info
 # Version:
-# Last Edited:      2015-09-29
 # Homepage:         https://github.com/mattst/getip
 # License:          GNU General Public License v3 - http://www.gnu.org/copyleft/gpl.html
 #
@@ -151,47 +150,46 @@
 # Principal Variables.
 
 # Holds the script version number.
-version="0.9b"
+version="0.9c"
 
 # Holds the url of the list of the web pages used to retrieve the IP address from.
 sourceUrlsListUrl="https://crius.feralhosting.com/gencon/SourceUrlsList"
 
+# Holds the minumum number of source urls that are required.
+sourceUrlsMinimum="15"
+
 # Array which holds the urls from $sourceUrlsListUrl - the array is populated below.
 urlArray=""
 
-# The number of urls in $urlArray (0 indexed, final element $urlArrayLength-1), set below.
+# The number of urls in $urlArray, set below.
 urlArrayLength="0"
 
-# $operationMode holds the operation mode, default 'MULTI'. Possible values: 'MULTI', 'FAST',
-# 'CHECK', or 'TESTURL'. 'MULTI' is the default mode.
-operationMode="MULTI"
 
-# Sets the default number of sources to use in multi mode. Recommended: 2 (Not: < 2 or > 5).
-numIpToUseForMulti="2"
+# $operationMode holds the operation mode, default 'GETIP'.
+# Possible values: 'GETIP', 'CHECK', or 'TESTURL'.
+operationMode="GETIP"
+
+# Sets the default number of sources to use in GETIP mode. Recommended: 2 (Not: < 2 or > 5).
+numIpToUseForGetIP="2"
 
 # Set the default timeout in seconds for the retrieval of each source. A different default timeout
 # can be set for each mode. Timeouts may be fractions of a second, e.g. 1.5, 0.75, .75
 
-# Keep the timeout low, so that if a source is offline or slow to respond, the script can move
-# on to the next source. Recommended: 0.75 to 3.0.
-timeoutMultiMode="1"
+# GETIP mode: keep the timeout low so that if a source is offline or slow to respond the script
+# can move on to the next source. Recommended: 0.75 to 3.0.
+timeoutGetIPMode="1"
 
-# In fast mode keep the timeout even lower, so that a slow source can be quickly skipped.
-# Recommended: 0.5 to 1.5.
-timeoutFastMode="0.75"
-
-# In check mode set the timeout much higher to give every source a good chance to succeed and to
-# see how long each of the sources take. Recommended: 10.
+# CHECK mode: set the timeout high to give the url a chance to succeed. Recommended: 10.
 timeoutCheckMode="10"
 
-# In test url mode set the timeout to give the url a chance to succeed. Recommended: 10.
+# TESTURL mode: set the timeout high to give the url a chance to succeed. Recommended: 10.
 timeoutTestUrlMode="10"
 
-# Web url of source to test in test url mode.
+# Web url of source to test in TESTURL mode.
 testUrlAddress=""
 
-# Flag variable to hold if the user has set the num source IPs to use for multi (the -n option).
-userSetNumIpToUseForMulti="FALSE"
+# Flag variable to hold if the user has set the number of source IPs to use (the -n option).
+userSetNumIpToUseForGetIP="FALSE"
 
 # Flag variable to hold if the user has set a timeout (the -t option).
 userSetTimeout="FALSE"
@@ -215,11 +213,13 @@ ExitStatusErrorTimeoutArgInvalid="3"
 ExitStatusErrorOptionInvalid="4"
 ExitStatusErrorArgMissing="5"
 ExitStatusErrorUserSetMoreThanOneMode="6"
-ExitStatusErrorWgetAndCurlNotInstalled="7"
-ExitStatusErrorTempFileCreationFailed="8"
-ExitStatusErrorDownloadWebSourceListFailed="9"
-ExitStatusErrorMultiOrFastModeGettingIpFailed="10"
-ExitStatusErrorCheckModeAllUrlsFailed="11"
+ExitStatusErrorUserSetVerboseAndBare="7"
+ExitStatusErrorWgetAndCurlNotInstalled="8"
+ExitStatusErrorDownloadWebSourceListFailed="11"
+ExitStatusErrorNotEnoughSourceUrls="9"
+ExitStatusErrorTempFileCreationFailed="10"
+ExitStatusErrorFailedToGetIPAddress="12"
+ExitStatusErrorCheckModeAllUrlsFailed="13"
 
 # Constants to hold the various values returned by the Get_Ip_From_Url() function.
 GetIpSingleValidIP="0"
@@ -243,6 +243,8 @@ Output_Error_Message()
     # Some errors display a configurable piece of information, e.g. an option.
     local additionalInfo=$2
 
+    # Output the appropriate error message to STDERR.
+
     if [ "$errToDisplay" = "ArgInvalid" ]; then
         echo "The argument given to the $additionalInfo option is invalid." >&2
 
@@ -255,12 +257,18 @@ Output_Error_Message()
     elif [ "$errToDisplay" = "UserSetMoreThanOneMode" ]; then
         echo "Only one operation mode can be used at a time." >&2
 
+    elif [ "$errToDisplay" = "UserSetVerboseAndBare" ]; then
+        echo "Verbose and bare output can not be used at the same time." >&2
+
     elif [ "$errToDisplay" = "TempFileCreationFailed" ]; then
         echo "Unable to create a temp file using 'mktemp'." >&2
 
     elif [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
         echo "Unable to download the list of web sources from:" >&2
         echo "$sourceUrlsListUrl" >&2
+
+    elif [ "$errToDisplay" = "NotEnoughSourceUrls" ]; then
+        echo "Not encough web sources urls, the minimum required is $sourceUrlsMinimum." >&2
 
     elif [ "$errToDisplay" = "FailedToGetIPAddress" ]; then
         echo "The script failed to get the IP address." >&2
@@ -281,6 +289,7 @@ Output_Error_Message()
 # Output_Error_Message "OptionInvalid"
 # Output_Error_Message "ArgMissing" "t"
 # Output_Error_Message "UserSetMoreThanOneMode"
+# Output_Error_Message "UserSetVerboseAndBare"
 # Output_Error_Message "TempFileCreationFailed"
 # Output_Error_Message "DownloadWebSourceListFailed"
 # Output_Error_Message "FailedToGetIPAddress"
@@ -417,30 +426,24 @@ elif [ "$1" = "--version" ]; then
 fi
 
 # Use getopts to handle the command line arguments. ToDo: Add long option support.
-while getopts ":cfmu:bvhn:t:" option; do
+while getopts ":gcu:bvhn:t:" option; do
 
     case $option in
 
+        g)
+            # -g has been used, set operation mode to GETIP.
+            operationMode="GETIP"
+            let "userSetModesCounter = userSetModesCounter + 1"
+            ;;
+
         c)
-            # -c has been used, set operation mode to check.
+            # -c has been used, set operation mode to CHECK.
             operationMode="CHECK"
             let "userSetModesCounter = userSetModesCounter + 1"
             ;;
 
-        f)
-            # -f has been used, set operation mode to fast.
-            operationMode="FAST"
-            let "userSetModesCounter = userSetModesCounter + 1"
-            ;;
-
-        m)
-            # -m has been used, set operation mode to multi.
-            operationMode="MULTI"
-            let "userSetModesCounter = userSetModesCounter + 1"
-            ;;
-
         u)
-            # -u url has been used, set operation mode to test url and set the url address.
+            # -u url has been used, set operation mode to TESTURL and set the url address.
             operationMode="TESTURL"
             testUrlAddress="$OPTARG"
             let "userSetModesCounter = userSetModesCounter + 1"
@@ -473,15 +476,15 @@ while getopts ":cfmu:bvhn:t:" option; do
 
         n)
             # -n num has been used, set the num source IPs to use and flag variable.
-            numIpToUseForMulti="$OPTARG"
-            userSetNumIpToUseForMulti="TRUE"
+            numIpToUseForGetIP="$OPTARG"
+            userSetNumIpToUseForGetIP="TRUE"
 
-            # Use sed to check that $numIpToUseForMulti is a single digit >=2 and <=5.
-            numMultiMin="2"
-            numMultiMax="5"
+            # Use sed to check that $numIpToUseForGetIP is a single digit >=2 and <=5.
+            numMin="2"
+            numMax="5"
 
-            sedExpIsNumInRange="s/^[$numMultiMin-$numMultiMax]\{1\}$/SINGLE_DIGIT_IN_RANGE/g"
-            isNumInRange=$(echo "$numIpToUseForMulti" | sed "$sedExpIsNumInRange")
+            sedExpIsNumInRange="s/^[$numMin-$numMax]\{1\}$/SINGLE_DIGIT_IN_RANGE/g"
+            isNumInRange=$(echo "$numIpToUseForGetIP" | sed "$sedExpIsNumInRange")
 
             # A single digit in range has not been entered.
             if [ "$isNumInRange" != "SINGLE_DIGIT_IN_RANGE" ]; then
@@ -506,11 +509,11 @@ while getopts ":cfmu:bvhn:t:" option; do
             fi
 
             # Check that $timeoutSecondsArg is a positive number in range, >=0.2 and <=30.
-            timeoutRangeMin="0.2"
-            timeoutRangeMax="30"
+            timeoutMin="0.2"
+            timeoutMax="30"
 
-            bcExpIsNumInRange="if ($timeoutSecondsArg < $timeoutRangeMin || \
-                                   $timeoutSecondsArg > $timeoutRangeMax) 1 else 0"
+            bcExpIsNumInRange="if ($timeoutSecondsArg < $timeoutMin || \
+                                   $timeoutSecondsArg > $timeoutMax) 1 else 0"
 
             bcExpIsNumInRangeRetVal=$(echo "$bcExpIsNumInRange" | bc -l)
 
@@ -557,25 +560,25 @@ if [ "$userSetModesCounter" -gt "1" ]; then
     exit "$ExitStatusErrorUserSetMoreThanOneMode"
 fi
 
-# Set the appropriate $timeout.
-if [ "$operationMode" = "FAST" ]; then
-    timeout="$timeoutFastMode"
-elif [ "$operationMode" = "MULTI" ]; then
-    timeout="$timeoutMultiMode"
-elif [ "$operationMode" = "CHECK" ]; then
-    timeout="$timeoutCheckMode"
-elif [ "$operationMode" = "TESTURL" ]; then
-    timeout="$timeoutTestUrlMode"
-fi
+# Set the appropriate timeout.
 
-# If the user set the timeout on the command line then use that instead of the default.
+# If the user set the timeout use that otherwise use the default.
 if [ "$userSetTimeout" = "TRUE" ]; then
     timeout="$timeoutSecondsArg"
+else
+    if [ "$operationMode" = "GETIP" ]; then
+        timeout="$timeoutGetIPMode"
+    elif [ "$operationMode" = "CHECK" ]; then
+        timeout="$timeoutCheckMode"
+    elif [ "$operationMode" = "TESTURL" ]; then
+        timeout="$timeoutTestUrlMode"
+    fi
 fi
 
-# If the user has set both verbose and bare output ignore the latter, verbose trumps bare.
+# If the user has set both verbose and bare output, display error and exit.
 if [ "$verbose" = "TRUE" -a "$bareOutput" = "TRUE" ]; then
-    bareOutput="FALSE"
+    Output_Error_Message "UserSetVerboseAndBare"
+    exit "$ExitStatusErrorUserSetVerboseAndBare"
 fi
 
 # Either wget or curl can be used to download the source urls.
@@ -612,25 +615,21 @@ else
 fi
 
 # If verbose is set, echo various diagnostic information.
-if [ "$verbose" = "TRUE" ]; then
-    echo "Script Version:        $version"
-    echo "Operation Mode:        $operationMode"
-    if [ "$operationMode" = "MULTI" ]; then
-        echo "Num Sources to Use:    $numIpToUseForMulti"
+if [ "$verbose" = "TRUE" -a "$operationMode" != "TESTURL" ]; then
+
+    printf "%-25s %s\n" "Script Version:" "$version"
+    printf "%-25s %s\n" "Operation Mode:" "$operationMode"
+
+    if [ "$operationMode" = "GETIP" ]; then
+        printf "%-25s %s\n" "Num IP Sources (To Use):" "$numIpToUseForGetIP"
     fi
-    if [ "$operationMode" = "TESTURL" ]; then
-        echo "Url to Test:          $testUrlAddress"
-    fi
-    echo "Timeout (Seconds):     $timeout"
-    echo "Web Download Utility:  $urlDownloadProgram"
-    echo ""
+
+    printf "%-25s %s\n" "Timeout (Seconds):" "$timeout"
+    printf "%-25s %s\n" "Download Utility:" "$urlDownloadProgram"
 fi
+
 
 # Fetch the web sources list from $sourceUrlsListUrl and store them in the $urlArray array.
-
-if [ "$verbose" = "TRUE" ]; then
-    echo "Downloading the list of urls (the sources list)"
-fi
 
 # Create a temp file to store the online source url list file in.
 tempFileNameForSourceUrls=$(mktemp -q -t "getip.sourceurls.tmp.XXXXXX")
@@ -691,8 +690,16 @@ urlArrayLength="$urlIndex"
 # Delete the temp file.
 if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
 
-if [ "$verbose" = "TRUE" ]; then
-    echo "Total Number of Source Urls: $urlArrayLength"
+# If verbose is set, echo various diagnostic information.
+if [ "$verbose" = "TRUE" -a "$operationMode" = "GETIP" ]; then
+    printf "%-25s %s\n" "Source Urls Download:" "Succeeded"
+    printf "%-25s %s\n" "Source Urls Total:" "$urlArrayLength"
+fi
+
+# Check if the number of source urls is fewer than the required minimum.
+if [ "$urlArrayLength" -lt "$sourceUrlsMinimum" ]; then
+    Output_Error_Message "NotEnoughSourceUrls"
+    exit "$ExitStatusErrorNotEnoughSourceUrls"
 fi
 
 
@@ -1000,20 +1007,19 @@ Get_Ip_From_Url()
 
 
 # Function that checks that all the IP addresses passed to it are exactly the same.
-# It is used to check that all the IP addresses retrieved in multi mode are identical.
-Multi_Ip_Check()
+# It is used to check that all the IP addresses retrieved are identical.
+Verify_IP_List()
 {
-    # Assign all the IP addresses passed to this function to the array $ipList.
-    local ipList=("$@")
+    # Assign all the IP addresses passed to this function to the array $ips.
+    local ips=("$@")
 
     # Iterate through the array checking that all the IP addresses are the same.
-    for ipToCheck in "${ipList[@]}"; do
+    for ip in "${ips[@]}"; do
 
-        # If $ipToCheck is not the same as the first IP address in the array, return 1.
-        if [ "$ipToCheck" != "${ipList[0]}" ]; then
+        # If $ip is not the same as the first IP address in the array, return 1.
+        if [ "$ip" != "${ips[0]}" ]; then
             return "1"
         fi
-
     done
 
     # All the IP addresses in the array must be the same, return 0.
@@ -1242,13 +1248,6 @@ Display_Stats()
 }
 
 
-# Flag variable to hold whether in multi or fast mode, some things are only done in these modes.
-if [ "$operationMode" = "MULTI" -o "$operationMode" = "FAST" ]; then
-    operationModeIsMultiOrFast="TRUE"
-else
-    operationModeIsMultiOrFast="FALSE"
-fi
-
 # Flag variable to hold whether to calculate the time taken to get the IP address,
 # this will only be done in either check mode or if verbose is set.
 if [ "$operationMode" = "CHECK" -o "$verbose" = "TRUE" ]; then
@@ -1257,14 +1256,15 @@ else
     timeIpRetrieval="FALSE"
 fi
 
-# Call the function which randomizes the $urlArray array, multi or fast mode only.
-if [ "$operationModeIsMultiOrFast" = "TRUE" ]; then
-
-    if [ "$verbose" = "TRUE" ]; then
-        echo "Randomizing the list of urls (the sources list)"
-    fi
+# Call the function which randomizes the $urlArray array.
+if [ "$operationMode" = "GETIP" ]; then
 
     Randomize_Url_List
+
+    # If verbose is set, echo various diagnostic information.
+    if [ "$verbose" = "TRUE" ]; then
+        printf "%-25s %s\n" "Source Urls Randomizing:" "Finished"
+    fi
 fi
 
 # If in test url mode test the url, providing helpful output, and then exit.
@@ -1324,32 +1324,34 @@ if [ "$operationMode" = "TESTURL" ]; then
     printf "%-21s%s\n" "Duration (Seconds):" "$timeTaken"
     printf "%-21s%s\n" "Timeout  (Seconds):" "$timeout"
 
-    # The exit point of the script in test url mode. Failure codes are not returned if a source
-    # did not provide a single valid IP address. This is because test url mode is designed to see
-    # if a web url is suitable for adding to the sources list. If the url provides more than a
-    # single valid IP address, or none at all, then test url mode still succeded in doing its job.
+    # The exit point of the script in test url mode.
     exit "$ExitStatusSuccess"
 fi
 
-# Array to hold the IP addresses retrieved in multi mode.
-multiIpList=""
+# Array to hold the IP addresses retrieved in GETIP mode.
+ipList=""
 
-# Counter to hold how many IP addresses have so far been retrieved in multi mode.
-multiIpCounter="0"
+# Counter to hold how many IP addresses have so far been retrieved in GETIP mode.
+ipCounter="0"
 
-# The script's main loop iterates through the urls in the $urlArray array. If in multi or fast mode
-# the script will exit from within this loop if the IP address is successfully retrieved (and, if
-# in multi mode, then verified). If in check mode the loop will iterate through to completion.
+# Test error handling with 'fake' IP address.
+# 1 = 1.2.3.4 IP address, 2 = has 2 IP addresses, 3 = no IP addresses.
+# urlArray[1]="https://crius.feralhosting.com/gencon/fakeip1.html"
+# urlArray[1]="https://crius.feralhosting.com/gencon/fakeip2.html"
+# urlArray[1]="https://crius.feralhosting.com/gencon/fakeip3.html"
+
+# The script's main loop iterates through the urls in the $urlArray array. If in GETIP mode
+# the script will exit from within this loop if the IP address is successfully retrieved and
+# then verified. If in check mode the loop will iterate through to completion.
 
 for url in "${urlArray[@]}"; do
 
     # If in check mode or verbose is set then time the IP address retrieval.
     if [ "$timeIpRetrieval" = "TRUE" ]; then timeStart=$(date +%s.%N); fi
 
-    # If verbose is set and in either multi or fast mode.
-    if [ "$verbose" = "TRUE" -a "$operationModeIsMultiOrFast" = "TRUE" ]; then
-        echo ""
-        echo "Trying: $url"
+    # If verbose is set and in GETIP mode.
+    if [ "$verbose" = "TRUE" -a "$operationMode" = "GETIP" ]; then
+        printf "\n%-25s %s\n" "Trying Source:" "$url"
     fi
 
     # Create a temp file for Get_Ip_From_Url() to use.
@@ -1381,19 +1383,19 @@ for url in "${urlArray[@]}"; do
 
     if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
         ipStatus="VALID_IP"
-        ipStatusVerbose="Source returned a valid IP address: $ipAddress"
+        ipStatusVerbose="Valid IP address: $ipAddress"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
         ipStatus="NO_IP_ADDRESS"
-        ipStatusVerbose="Source failed: server did not return a valid IP address"
+        ipStatusVerbose="Failed: No IP address"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
         ipStatus="IP_NOT_UNIQUE"
-        ipStatusVerbose="Source failed: server returned more than one valid IP address"
+        ipStatusVerbose="Failed: More than one IP address"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
         ipStatus="URL_TIMED_OUT"
-        ipStatusVerbose="Source failed: server timed out"
+        ipStatusVerbose="Failed: Server timed out"
     fi
 
     # If in check mode or verbose is set, calculate the time taken (reduce to 3 decimal places).
@@ -1402,95 +1404,63 @@ for url in "${urlArray[@]}"; do
         timeTaken=$(printf "%.3F" $(echo "$timeStop - $timeStart" | bc -l))
     fi
 
-    # If verbose is set and in either multi or fast mode.
-    if [ "$verbose" = "TRUE" -a "$operationModeIsMultiOrFast" = "TRUE" ]; then
-        echo "$ipStatusVerbose"
-        echo "Duration (seconds): $timeTaken"
+    # If verbose is set and in GETIP mode.
+    if [ "$verbose" = "TRUE" -a "$operationMode" = "GETIP" ]; then
+        printf "%-25s %s\n" "Status:" "$ipStatusVerbose"
+        printf "%-25s %s\n" "Duration (Seconds):" "$timeTaken"
     fi
 
-    # Code to handle the operation mode: FAST
+    # Code to handle the operation mode: GETIP
 
-    # If operating in fast mode and $ipAddress contains a properly formed IP address, then echo
-    # the IP address and exit the script.
-
-    if [ "$operationMode" = "FAST" -a "$ipStatus" = "VALID_IP" ]; then
-
-        if [ "$verbose" = "TRUE" ]; then
-            echo ""
-            echo "Using fast mode is not guaranteed to be totally reliable, from time to time"
-            echo "a web source will stop supplying IP addresses, in such cases an example IP"
-            echo "address on the site, or a software version number, could be given as your IP"
-            echo "address. The default multi mode verifies your IP address on 2 or more sites"
-            echo "and is very reliable. Fast mode should only be used to confirm a known IP"
-            echo "address, for instance when connecting or disconnecting a VPN. See -h."
-            echo ""
-            echo "IPv4 address: $ipAddress"
-        else
-            if [ "$bareOutput" = "TRUE" ]; then
-                echo "$ipAddress"
-            else
-                echo "IPv4 address: $ipAddress"
-            fi
-        fi
-
-        exit "$ExitStatusSuccess"
-    fi
-
-    # Code to handle the operation mode: MULTI
-
-    # If operating in multi mode store valid IP addresses in an array and use Multi_Ip_Check() to
+    # If operating in GETIP mode store valid IP addresses in an array and use Verify_IP_List() to
     # check that all the IPs in the array are the same. If they are all the same and the required
     # number of IP addresses to use for verification have been retrieved, then the IP address can
     # be echoed and the script can exit. If the IP addresses in the array are not all the same
     # then reset the variables and keep going so that different sources are then used.
 
-    if [ "$operationMode" = "MULTI" -a "$ipStatus" = "VALID_IP" ]; then
+    if [ "$operationMode" = "GETIP" -a "$ipStatus" = "VALID_IP" ]; then
 
         # Add the IP address to the verify array, and add 1 to the counter.
-        multiIpList[$multiIpCounter]="$ipAddress"
-        let "multiIpCounter = multiIpCounter + 1"
+        ipList[$ipCounter]="$ipAddress"
+        let "ipCounter = ipCounter + 1"
 
         # If verbose is set...
         if [ "$verbose" = "TRUE" ]; then
-            echo "Adding IP address to multi list: $multiIpCounter of $numIpToUseForMulti"
+            printf "%-25s %s\n" "Add IP To List:" "$ipCounter of $numIpToUseForGetIP"
         fi
 
         # Check if all the IP addresses in the array are the same.
-        Multi_Ip_Check "${multiIpList[@]}"
+        Verify_IP_List "${ipList[@]}"
         multiIpCheckRetVal=$?
 
         # If the IP addresses in the array are not all the same then reset the variables.
         if [ "$multiIpCheckRetVal" -ne "0" ]; then
 
             if [ "$verbose" = "TRUE" ]; then
-                echo ""
-                echo "The multi mode verification process failed, the $multiIpCounter IP addresses"
-                echo "already retrieved are not identical. The script will discard"
-                echo "these IP addresses and start again with different sources."
+                printf "\n%-25s %s\n" "IP List Verification:" "Failed [IP addresses differed]"
+                printf "%-25s %s\n" "Status:" "Restart using different sources"
             fi
 
             # Reset the array and counter variables.
-            unset multiIpList
-            multiIpCounter="0"
+            unset ipList
+            ipCounter="0"
         fi
 
         # The array contains the required number of IP addresses to use for verification.
         # Note: The if statement below will only evaluate to true if the IP addresses in the array
-        # are all the same, if they weren't then $multiIpCounter would have been set to 0 above.
-        if [ "$multiIpCounter" -eq "$numIpToUseForMulti" ]; then
+        # are all the same, if they weren't then $ipCounter would have been set to 0 above.
+        if [ "$ipCounter" -eq "$numIpToUseForGetIP" ]; then
 
             # If verbose is set...
             if [ "$verbose" = "TRUE" ]; then
-                echo ""
-                echo "The multi mode verification process has succeeded, the $multiIpCounter IP"
-                echo "addresses retrieved from different web sources are identical."
-                echo ""
-                echo "IPv4 address: $ipAddress"
+                printf "\n%-25s %s" "IP List Verification:" "Succeeded "
+                printf "%s\n" "[$ipCounter identical IP addresses]"
+                printf "\n%-25s %s\n" "IPv4 address:" "$ipAddress"
             else
                 if [ "$bareOutput" = "TRUE" ]; then
-                    echo "$ipAddress"
+                    printf "%s\n" "$ipAddress"
                 else
-                    echo "IPv4 address: $ipAddress"
+                    printf "%s\n" "IPv4 address: $ipAddress"
                 fi
             fi
 
@@ -1530,11 +1500,11 @@ for url in "${urlArray[@]}"; do
 done  # End of loop through $urlArray loop.
 
 
-# If operating in multi or fast mode, then if this section of the script is reached then the
-# script failed to supply a valid IP address.
-if [ "$operationModeIsMultiOrFast" = "TRUE" ]; then
+# If operating in GETIP mode, then if this section of the script is reached then the script failed
+# to supply a valid IP address.
+if [ "$operationMode" = "GETIP" ]; then
     Output_Error_Message "FailedToGetIPAddress"
-    exit "$ExitStatusErrorMultiOrFastModeGettingIpFailed"
+    exit "$ExitStatusErrorFailedToGetIPAddress"
 fi
 
 # If operating in check mode, then display the check mode statistics.
