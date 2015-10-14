@@ -15,7 +15,7 @@
 # The complete list of all utilities and Bash shell commands used by the getip script:
 #
 # awk, bc, curl, date, disown, echo, exit, getopts, grep, hash, kill, man, mktemp, printf, ps,
-# $RANDOM, read, rm, sed, sort, tr, uniq, unset, wc, wget. [wget or curl required, not both.]
+# $RANDOM, read, rm, sed, sort, tr, uniq, unset, wc, wget. [Either wget or curl required.]
 #
 # With the exception of wget and curl all of the above utilities and commands are expected to exist
 # on all modern UNIX like operating systems. If neither wget nor curl are installed the script will
@@ -24,52 +24,51 @@
 #
 # Description:
 #
-# getip is a script used to retrieve an external IPv4 address from behind a router using web sites
-# which provide the IP address in plain text or HTML. Note: IPv4 only, not IPv6.
+# getip is a script used to retrieve a wide area network (WAN) IPv4 address from behind a router
+# using web pages which provide the IP address in plain text or HTML. Note: IPv4 only, not IPv6.
 #
 # getip echoes the IP address so that it is displayed in the shell or so that it can be stored in a
 # variable if getip is called from within another script.
 #
-# Command line options (all optional):
+# Command line options (all optional, in typical use none are necessary.):
 #
-# -m           MULTI; get the IP from multiple sources and check they are all the same (default).
-# -f           FAST; get the IP from just one source in order to echo it more quickly than multi.
+# -g           GET; get the IP from multiple sources and verify they are all the same (default).
 # -c           CHECK; display the IP address returned by all the web sources and show stats.
-# -u url       TEST; test an url for possible inclusion in the source urls and show info.
-# -n number    Set the NUMBER of sources to use for verification in multi mode. Range >=2 and <=5.
+# -u url       TEST; test an URL for possible inclusion in the source urls and show info.
+# -n number    Set the NUMBER of sources to use for verification. Range >=2 and <=5 (default 2).
 # -t seconds   Set the TIMEOUT for each source. Real numbers are permitted (e.g. '1.5', '0.75').
-# -b           Bare output; display only the IP address and not the "IPv4 address:" prefix.
+# -b           BARE output; display only the IP address and not the "IPv4 address:" prefix.
 # -v           VERBOSE; output information while the script is running.
 # -h, --help   HELP; output program usage and help.
+# --version    Display the VERSION of the script.
 #
-# Multi mode is the default mode so -m is not needed on the command line. The default number of
-# sources to use in multi mode is 2.
+# GET is the default operation so -g is not needed on the command line, is uses the default number
+# of sources which is 2 unless '-n number' is used to set the number of sources.
 #
 #
-# The 4 operation modes: MULTI, FAST, CHECK, and TESTURL.
-#
-# In both multi and fast modes the list of web sources (the list of web sites which provide your IP
-# address) is randomized before use so that no source is used more often than any other. Note: the
-# time taken to shuffle the list is negligible.
+# The getip script uses a file containing a long list of web pages, each of which provide the IP
+# address in either plain text or HTML, this is known as the sources list. Each web page url is on a
+# separate line in the file. The sources list is stored online on the script's github page. Each
+# time the script is run it downloads the sources list - by doing this the script always uses the
+# most up-to-date version of the list, rather than a local copy which would soon contain sites that
+# no longer exist, have become slow to respond, or which are otherwise no longer reliable.
 #
 # From time to time a web page used as a source will stop providing IP addresses, either temporarily
 # or permanently, but an example IP address might remain on the page, or an IP-like software version
 # number might be present on the page (embedded within the HTML) and which could be mistaken for a
-# real IP address. In such circumstances an IP address fetching script could provide a user with an
-# incorrect IP address. getip uses multi mode by default which fetches the IP address from more than
-# one source (2 by default) and makes sure they are the same. Users are advised to use multi mode.
+# real IP address (although the script tries hard to spot and ignore these). In such circumstances
+# an IP address fetching script could provide a user with an incorrect IP address. The getip script
+# makes sure this does not happen.
+#
+# The getip script retrieves the IP address from multiple sources and checks that they have supplied
+# the same IP address. The default number of sources used is 2 but this can be set on the command
+# line using the -n option, the range of values is >=2 and <=5. The default is considered to be
+# sufficient due to the unlikelihood of 2 sources both providing the same incorrect IP address. Very
+# cautious users might want to use 3 sources, while 5 would indicate paranoia. Clearly the more
+# sources used the longer it takes [guesstimate about 1 second per source on average].
 #
 #
-# MULTI (default mode)   - Command line switches: -m and/or -n number_of_sources
-#                        - No switch necessary, MULTI mode is used by default.
-#
-# In multi mode getip will retrieve the IP address from more than one source and check that all
-# sources have supplied the same IP address. The default number of sources to use is 2 but this can
-# be set on the command line with -n num where the range of values is >=2 and <=5. Note that the
-# default is considered to be sufficient due to the unlikelihood of 2 sources both providing the
-# same incorrect IP address. [Using 3 would be over-cautious, 5 in a state of paranoia.]
-#
-#
+# Description of Options:
 # FAST                   - Command line switch: -f
 #
 # In fast mode getip will retrieve the IP address from just one source with no verification. It is
@@ -152,7 +151,7 @@
 # Holds the script version number.
 version="0.9c"
 
-# Holds the url of the list of the web pages used to retrieve the IP address from.
+# Holds the url of the list of source urls.
 sourceUrlsListUrl="https://crius.feralhosting.com/gencon/SourceUrlsList"
 
 # Holds the minumum number of source urls that are required.
@@ -163,7 +162,6 @@ urlArray=""
 
 # The number of urls in $urlArray, set below.
 urlArrayLength="0"
-
 
 # $operationMode holds the operation mode, default 'GETIP'.
 # Possible values: 'GETIP', 'CHECK', or 'TESTURL'.
