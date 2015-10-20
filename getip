@@ -480,10 +480,9 @@ Read_Source_Url_List()
 
 
 # Function that randomizes the $urlArray array. Since this script is being publicly released it is
-# sensible to randomize the sources so as not to place undue pressure on any one server. This is
-# an implementation of the Knuth shuffle algorithm (aka Fisher-Yates shuffle), which is a very
-# efficient randomizer, needing just one pass through an array, so time complexity is: O(n)
-# Get more information on the Knuth shuffle here: http://en.wikipedia.org/wiki/Knuth_shuffle
+# sensible to randomize the sources so as not to place undue pressure on the servers at the top of
+# the list. This is an implementation of the Knuth shuffle algorithm (aka Fisher-Yates shuffle),
+# which is a very efficient randomizer, needing just one pass through an array.
 # IMPORTANT: THE $urlArray ARRAY MUST BE INDEXED IN NUMERICAL SEQUENCE FROM 0 FOR THIS FUNCTION.
 Randomize_Url_List()
 {
@@ -495,19 +494,20 @@ Randomize_Url_List()
 
     # Loop down through the array randomly swapping the current element with another randomly
     # chosen element (possibly itself). The use of >1 needs a moment to understand... if instead
-    # it was > 0 then the final iteration would always swap index 0 with itself.
+    # it was >0 then the final iteration would always swap index 0 with itself.
     while [ "$index" -gt "1" ]; do
 
-        # Modulo bias avoidance as per Knuth shuffle algorithm description. Use bc to calculate the
-        # highest usable random number so that the modulo by index calculation will not result in
-        # any modulo bias. [scale=0 means integer arithmetic, the division will be rounded down.]
+        # Modulo bias avoidance as per Knuth shuffle algorithm description. Calculate the highest
+        # usable random number so that the modulo by index calculation will not result in any modulo
+        # bias. Note: Not really necessary but the function only takes ~0.003 seconds with 100 urls
+        # (on my PC) so why not do it right!? That's just ~0.15% of the average run time.
 
-        local bcExpHighestAcceptableRandNum="scale=0; (($randMax / $index) * $index) - 1"
-        local highestAcceptableRandNum=$(echo "$bcExpHighestAcceptableRandNum" | bc)
+        # Integer arithmetic, the division will be rounded down.
+        let "highestUsableRandNum = (($randMax / $index) * $index) - 1"
 
         # Get a random number within the modulo bias avoidance range.
         local randNum="$RANDOM"
-        while [ "$randNum" -gt "$highestAcceptableRandNum" ]; do
+        while [ "$randNum" -gt "$highestUsableRandNum" ]; do
             randNum="$RANDOM"
         done
 
@@ -518,7 +518,7 @@ Randomize_Url_List()
         # iteration index will be $urlArrayLength - 1 (the final element of the array) and for the
         # last loop iteration index will be 1. By doing so the current index will be swapped with
         # a randomly chosen index ($randIndex) in the range 0..index, so elements will sometimes
-        # be 'swapped' with themselves (if no elements could stay put it wouldn't be random).
+        # be 'swapped' with themselves (if elements could not stay put it wouldn't be random).
 
         let "index = index - 1"
         local tempUrl=${urlArray[$index]}
