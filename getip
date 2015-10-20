@@ -14,8 +14,8 @@
 #
 # The complete list of all utilities and Bash shell commands used by the getip script:
 #
-# awk, bc, curl, date, disown, echo, exit, getopts, grep, hash, kill, man, mktemp, printf, ps,
-# $RANDOM, read, rm, sed, sort, tr, uniq, unset, wc, wget. [Either wget or curl required.]
+# awk, bc, cat, curl, date, disown, echo, exit, getopts, grep, hash, kill, man, mktemp, printf, ps,
+# $RANDOM, read, rm, sed, shift, sort, tr, uniq, unset, wc, wget. [Either wget or curl required.]
 #
 # With the exception of wget and curl all of the above utilities and commands are expected to exist
 # on all modern UNIX like operating systems. If neither wget nor curl are installed the script will
@@ -175,7 +175,7 @@ numIpToUseForGetIP="2"
 
 # GETIP mode: keep the timeout low so that if a source is offline or slow to respond the script
 # can move on to the next source. Recommended: 0.75 to 3.0.
-timeoutGetIPMode="1"
+timeoutGetIPMode="1.5"
 
 # CHECK mode: set the timeout high to give the url a chance to succeed. Recommended: 10.
 timeoutCheckMode="10"
@@ -192,6 +192,9 @@ userSetNumIpToUseForGetIP="FALSE"
 # Flag variable to hold if the user has set a timeout (the -t option).
 userSetTimeout="FALSE"
 
+# Flag variable to hold if the user has set the download program (the -d option).
+userSetUrlDownloadProgram="FALSE"
+
 # Flag variable to hold if the user has set the bare output option (the -b option).
 bareOutput="FALSE"
 
@@ -202,97 +205,42 @@ verbose="FALSE"
 # this facilitates checking the user has not inadvertently set more than 1 mode.
 userSetModesCounter="0"
 
-# Constants to hold the various exit statuses of the script.
-# Careful using ST's InsertNums here, success must be 0 not 1.
-ExitStatusSuccess="0"
-ExitStatusErrorUrlArgInvalid="1"
-ExitStatusErrorNumSourcesArgInvalid="2"
-ExitStatusErrorTimeoutArgInvalid="3"
-ExitStatusErrorOptionInvalid="4"
-ExitStatusErrorArgMissing="5"
-ExitStatusErrorUserSetMoreThanOneMode="6"
-ExitStatusErrorUserSetVerboseAndBare="7"
-ExitStatusErrorWgetAndCurlNotInstalled="8"
-ExitStatusErrorDownloadWebSourceListFailed="11"
-ExitStatusErrorNotEnoughSourceUrls="9"
-ExitStatusErrorTempFileCreationFailed="10"
-ExitStatusErrorFailedToGetIPAddress="12"
-ExitStatusErrorCheckModeAllUrlsFailed="13"
+# Set the user agent to use for web page downloads. The script does not try to hide that it is a
+# script. The user agent header is modelled on the one used by Google's 'googlebot':
+# Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+userAgent="Mozilla/5.0 (compatible; getipscript/$version; +https://github.com/mattst/getip)"
 
 # Constants to hold the various values returned by the Get_Ip_From_Url() function.
 GetIpSingleValidIP="0"
 GetIpNoValidIP="1"
 GetIpMultipleValidIP="2"
 GetIpTimedOut="3"
+GetIpTempFileCreationFailed="4"
 
-# Set the user agent to use for web page downloads. The script does not try to hide that it is a
-# script. The user agent header is modelled on the one used by Google's 'googlebot':
-# Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-userAgent="Mozilla/5.0 (compatible; getipscript/$version; +https://github.com/mattst/getip)"
+# Variables used for stats in the check operation mode.
+statsValidIpAddressList=""
+statsTimesList=""
+statsTotalValidIp="0"
+statsTotalInValidIp="0"
 
+# Constants to hold the various exit statuses of the script.
+# Careful using ST's InsertNums here, success must be 0 not 1.
+ExitStatusSuccess="0"
+ExitStatusErrorUrlArgInvalid="101"
+ExitStatusErrorNumSourcesArgInvalid="102"
+ExitStatusErrorTimeoutArgInvalid="103"
+ExitStatusErrorUrlDownloadProgramArgInvalid="104"
+ExitStatusErrorOptionInvalid="105"
+ExitStatusErrorArgMissing="106"
+ExitStatusErrorUserSetMoreThanOneMode="107"
+ExitStatusErrorUserSetVerboseAndBare="108"
+ExitStatusErrorUrlDownloadProgramNotInstalled="109"
+ExitStatusErrorDownloadWebSourceListFailed="110"
+ExitStatusErrorNotEnoughSourceUrls="111"
+ExitStatusErrorTempFileCreationFailed="112"
+ExitStatusErrorFailedToGetIPAddress="113"
+ExitStatusErrorCheckModeAllUrlsFailed="114"
 
-# Function which sends the various error messages to STDERR.
-Output_Error_Message()
-{
-    # Assign $errToDisplay the value of the 1st function arg (NOT script arg).
-    local errToDisplay=$1
-
-    # Assign $additionalInfo the value of the 2nd function arg (NOT script arg).
-    # Some errors display a configurable piece of information, e.g. an option.
-    local additionalInfo=$2
-
-    # Output the appropriate error message to STDERR.
-
-    if [ "$errToDisplay" = "ArgInvalid" ]; then
-        echo "The argument given to the $additionalInfo option is invalid." >&2
-
-    elif [ "$errToDisplay" = "OptionInvalid" ]; then
-        echo "An invalid option has been entered." >&2
-
-    elif [ "$errToDisplay" = "ArgMissing" ]; then
-        echo "The argument is missing for the option: -$additionalInfo" >&2
-
-    elif [ "$errToDisplay" = "UserSetMoreThanOneMode" ]; then
-        echo "Only one operation mode can be used at a time." >&2
-
-    elif [ "$errToDisplay" = "UserSetVerboseAndBare" ]; then
-        echo "Verbose and bare output can not be used at the same time." >&2
-
-    elif [ "$errToDisplay" = "TempFileCreationFailed" ]; then
-        echo "Unable to create a temp file using 'mktemp'." >&2
-
-    elif [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
-        echo "Unable to download the list of web sources from:" >&2
-        echo "$sourceUrlsListUrl" >&2
-
-    elif [ "$errToDisplay" = "NotEnoughSourceUrls" ]; then
-        echo "Not encough web sources urls, the minimum required is $sourceUrlsMinimum." >&2
-
-    elif [ "$errToDisplay" = "FailedToGetIPAddress" ]; then
-        echo "The script failed to get the IP address." >&2
-
-    elif [ "$errToDisplay" = "WgetAndCurlNotInstalled" ]; then
-        echo "The getip script requires either 'wget' or 'curl' to access the web, please" >&2
-        echo "install one of them in order to use this script. wget and curl are both" >&2
-        echo "programs that can retrieve web pages, and they are widely available for all" >&2
-        echo "UNIX/Linux based systems. The getip script works equally well with either." >&2
-    fi
-
-    echo "" >&2
-    echo "Use \"getip -h\" for usage and help." >&2
-}
-
-# Test error messages:
-# Output_Error_Message "ArgInvalid" "-u"
-# Output_Error_Message "OptionInvalid"
-# Output_Error_Message "ArgMissing" "t"
-# Output_Error_Message "UserSetMoreThanOneMode"
-# Output_Error_Message "UserSetVerboseAndBare"
-# Output_Error_Message "TempFileCreationFailed"
-# Output_Error_Message "DownloadWebSourceListFailed"
-# Output_Error_Message "FailedToGetIPAddress"
-# Output_Error_Message "WgetAndCurlNotInstalled"
-# exit 0
 
 
 # Display help by redirecting the text of the man page to a temp file and displaying it using man.
@@ -410,295 +358,125 @@ EOF
 }
 
 
-# Before handling the arguments with getopts, check for long options:
+# Function which sends the various error messages to STDERR.
+Output_Error_Message()
+{
+    # Assign $errToDisplay the value of the 1st function arg (NOT script arg).
+    local errToDisplay=$1
 
-# Check if the first arg is "--help", if so display help and exit (-h is handled by getopts).
-if [ "$1" = "--help" -o "$1" = "-?" ]; then
-    Display_Usage_Message
-    exit "$ExitStatusSuccess"
+    # Assign $additionalInfo the value of the 2nd function arg (NOT script arg).
+    # Some errors display a configurable piece of information, e.g. an option.
+    local additionalInfo=$2
 
-# Check if the first arg is "--version", if so display version number and exit.
-elif [ "$1" = "--version" ]; then
-    echo "getip v. $version"
-    exit "$ExitStatusSuccess"
-fi
+    # Output the appropriate error message to STDERR.
 
-# Use getopts to handle the command line arguments. ToDo: Add long option support.
-while getopts ":gcu:bvhn:t:" option; do
+    if [ "$errToDisplay" = "ArgInvalid" ]; then
+        echo "The argument given to the $additionalInfo option is invalid." >&2
 
-    case $option in
+    elif [ "$errToDisplay" = "OptionInvalid" ]; then
+        echo "An invalid option has been entered." >&2
 
-        g)
-            # -g has been used, set operation mode to GETIP.
-            operationMode="GETIP"
-            let "userSetModesCounter = userSetModesCounter + 1"
-            ;;
+    elif [ "$errToDisplay" = "ArgMissing" ]; then
+        echo "The argument is missing for the option: -$additionalInfo" >&2
 
-        c)
-            # -c has been used, set operation mode to CHECK.
-            operationMode="CHECK"
-            let "userSetModesCounter = userSetModesCounter + 1"
-            ;;
+    elif [ "$errToDisplay" = "UserSetMoreThanOneMode" ]; then
+        echo "Only one operation mode can be used at a time." >&2
 
-        u)
-            # -u url has been used, set operation mode to TESTURL and set the url address.
-            operationMode="TESTURL"
-            testUrlAddress="$OPTARG"
-            let "userSetModesCounter = userSetModesCounter + 1"
+    elif [ "$errToDisplay" = "UserSetVerboseAndBare" ]; then
+        echo "Verbose and bare output can not be used at the same time." >&2
 
-            # Check if $testUrlAddress is an url by seeing if the first 4 chars are 'http'.
-            urlFirst4Chars=${testUrlAddress:0:4}
-            urlFirst4CharsLowerCase=$(echo "$urlFirst4Chars" | tr '[:upper:]' '[:lower:]')
+    elif [ "$errToDisplay" = "TempFileCreationFailed" ]; then
+        echo "Unable to create a temp file using 'mktemp'." >&2
 
-            if [ "$urlFirst4CharsLowerCase" != "http" ]; then
-                Output_Error_Message "ArgInvalid" "-u"
-                exit "$ExitStatusErrorUrlArgInvalid"
-            fi
-            ;;
+    elif [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
+        echo "Unable to download the list of web sources from:" >&2
+        echo "$sourceUrlsListUrl" >&2
 
-        b)
-            # -b has been used, turn on bare output.
-            bareOutput="TRUE"
-            ;;
+    elif [ "$errToDisplay" = "NotEnoughSourceUrls" ]; then
+        echo "Not enough web sources urls, the minimum required is $sourceUrlsMinimum." >&2
 
-        v)
-            # -v has been used, turn on verbose.
-            verbose="TRUE"
-            ;;
+    elif [ "$errToDisplay" = "FailedToGetIPAddress" ]; then
+        echo "The script failed to get the IP address." >&2
 
-        h)
-            # -h has been used, display help and then exit.
-            Display_Usage_Message
-            exit "$ExitStatusSuccess"
-            ;;
+    elif [ "$errToDisplay" = "WgetNotInstalled" ]; then
+        echo "The program wget is not installed on your system." >&2
 
-        n)
-            # -n num has been used, set the num source IPs to use and flag variable.
-            numIpToUseForGetIP="$OPTARG"
-            userSetNumIpToUseForGetIP="TRUE"
+    elif [ "$errToDisplay" = "CurlNotInstalled" ]; then
+        echo "The program curl is not installed on your system." >&2
 
-            # Use sed to check that $numIpToUseForGetIP is a single digit >=2 and <=5.
-            numMin="2"
-            numMax="5"
-
-            sedExpIsNumInRange="s/^[$numMin-$numMax]\{1\}$/SINGLE_DIGIT_IN_RANGE/g"
-            isNumInRange=$(echo "$numIpToUseForGetIP" | sed "$sedExpIsNumInRange")
-
-            # A single digit in range has not been entered.
-            if [ "$isNumInRange" != "SINGLE_DIGIT_IN_RANGE" ]; then
-                Output_Error_Message "ArgInvalid" "-n"
-                exit "$ExitStatusErrorNumSourcesArgInvalid"
-            fi
-            ;;
-
-        t)
-            # -t seconds has been used, set the timeout flag and arg variables.
-            timeoutSecondsArg="$OPTARG"
-            userSetTimeout="TRUE"
-
-            # Check that $timeoutSecondsArg is a number, int or real. This is a Bash hack to use
-            # awk to check whether a variable is any kind of number (int or real).
-            awkIsNum='END { if ($1 + 0 == $1) print "Num"; else print "NotNum" }'
-            awkIsNumRetVal=$(echo "$timeoutSecondsArg" | awk "$awkIsNum")
-
-            if [ "$awkIsNumRetVal" = "NotNum" ]; then
-                Output_Error_Message "ArgInvalid" "-t"
-                exit "$ExitStatusErrorTimeoutArgInvalid"
-            fi
-
-            # Check that $timeoutSecondsArg is a positive number in range, >=0.2 and <=30.
-            timeoutMin="0.2"
-            timeoutMax="30"
-
-            bcExpIsNumInRange="if ($timeoutSecondsArg < $timeoutMin || \
-                                   $timeoutSecondsArg > $timeoutMax) 1 else 0"
-
-            bcExpIsNumInRangeRetVal=$(echo "$bcExpIsNumInRange" | bc -l)
-
-            # A positive number in range has not been entered.
-            if [ "$bcExpIsNumInRangeRetVal" -eq "1" ]; then
-                Output_Error_Message "ArgInvalid" "-t"
-                exit "$ExitStatusErrorTimeoutArgInvalid"
-            fi
-            ;;
-
-        \?)
-            # User entered an invalid option, e.g. '-x'. Note: Invalid args with no '-' prefix,
-            # are handled immediately after this while loop.
-            Output_Error_Message "OptionInvalid"
-            exit "$ExitStatusErrorOptionInvalid"
-            ;;
-
-        :)
-            # User omitted the required additional arg of either the, -u, -n or -t option.
-            Output_Error_Message "ArgMissing" "$OPTARG"
-            exit "$ExitStatusErrorArgMissing"
-            ;;
-    esac
-done
-
-
-# getopts stops processing args if it encounters an arg without a '-' prefix (unless it is an
-# $OPTARG in which case processing continues). Check if any invalid args have been entered by
-# working out how many args getopts has actually processed, shifting them off, and if more
-# than 0 args remain then an invalid arg must have been entered.
-
-let "numArgsProcessedByGetopts = OPTIND - 1"
-shift "$numArgsProcessedByGetopts"
-numArgsRemaining="$#"
-
-if [ "$numArgsRemaining" -gt "0" ]; then
-    Output_Error_Message "OptionInvalid"
-    exit "$ExitStatusErrorOptionInvalid"
-fi
-
-# If the user set more than 1 mode on the command line, display error and exit.
-if [ "$userSetModesCounter" -gt "1" ]; then
-    Output_Error_Message "UserSetMoreThanOneMode"
-    exit "$ExitStatusErrorUserSetMoreThanOneMode"
-fi
-
-# Set the appropriate timeout.
-
-# If the user set the timeout use that otherwise use the default.
-if [ "$userSetTimeout" = "TRUE" ]; then
-    timeout="$timeoutSecondsArg"
-else
-    if [ "$operationMode" = "GETIP" ]; then
-        timeout="$timeoutGetIPMode"
-    elif [ "$operationMode" = "CHECK" ]; then
-        timeout="$timeoutCheckMode"
-    elif [ "$operationMode" = "TESTURL" ]; then
-        timeout="$timeoutTestUrlMode"
-    fi
-fi
-
-# If the user has set both verbose and bare output, display error and exit.
-if [ "$verbose" = "TRUE" -a "$bareOutput" = "TRUE" ]; then
-    Output_Error_Message "UserSetVerboseAndBare"
-    exit "$ExitStatusErrorUserSetVerboseAndBare"
-fi
-
-# Either wget or curl can be used to download the source urls.
-# $urlDownloadProgram will hold which to use, either: 'WGET' or 'CURL'.
-
-# Set the default download program (which to use if both are installed).
-# urlDefaultDownloadProgram="CURL"
-urlDefaultDownloadProgram="WGET"
-
-# Check whether wget and curl are installed, at least one is required.
-hash wget > /dev/null 2>&1
-isWgetInstalled=$?
-hash curl > /dev/null 2>&1
-isCurlInstalled=$?
-
-# Decide whether to use wget or curl for web page downloading.
-
-# If both wget and curl are installed, use the default.
-if [ "$isWgetInstalled" -eq "0" -a "$isCurlInstalled" -eq "0" ]; then
-    urlDownloadProgram="$urlDefaultDownloadProgram"
-
-# If only wget is installed, use that.
-elif [ "$isWgetInstalled" -eq "0" -a "$isCurlInstalled" -ne "0" ]; then
-    urlDownloadProgram="WGET"
-
-# If only curl is installed, use that.
-elif [ "$isCurlInstalled" -eq "0" -a "$isWgetInstalled" -ne "0" ]; then
-    urlDownloadProgram="CURL"
-
-# If neither wget nor curl are installed, display error and exit.
-else
-    Output_Error_Message "WgetAndCurlNotInstalled"
-    exit "$ExitStatusErrorWgetAndCurlNotInstalled"
-fi
-
-# If verbose is set, echo various diagnostic information.
-if [ "$verbose" = "TRUE" -a "$operationMode" != "TESTURL" ]; then
-
-    printf "%-25s %s\n" "Script Version:" "$version"
-    printf "%-25s %s\n" "Operation Mode:" "$operationMode"
-
-    if [ "$operationMode" = "GETIP" ]; then
-        printf "%-25s %s\n" "Num IP Sources (To Use):" "$numIpToUseForGetIP"
+    elif [ "$errToDisplay" = "WgetAndCurlNotInstalled" ]; then
+        echo "The getip script requires either 'wget' or 'curl' to access the web, please" >&2
+        echo "install one of them in order to use this script. wget and curl are both" >&2
+        echo "programs that can retrieve web pages, and they are widely available for all" >&2
+        echo "UNIX/Linux based systems. The getip script works equally well with either." >&2
     fi
 
-    printf "%-25s %s\n" "Timeout (Seconds):" "$timeout"
-    printf "%-25s %s\n" "Download Utility:" "$urlDownloadProgram"
-fi
+    echo "" >&2
+    echo "Use \"getip -h\" for usage and help." >&2
+}
 
 
 # Fetch the web sources list from $sourceUrlsListUrl and store them in the $urlArray array.
+Read_Source_Url_List()
+{
+    # Create a temp file to store the online source url list file in.
+    tempFileNameForSourceUrls=$(mktemp -q -t "getip.sourceurls.tmp.XXXXXX")
+    mktempFileCreationRetVal=$?
 
-# Create a temp file to store the online source url list file in.
-tempFileNameForSourceUrls=$(mktemp -q -t "getip.sourceurls.tmp.XXXXXX")
-mktempFileCreationRetVal=$?
-
-if [ "$mktempFileCreationRetVal" -ne "0" ]; then
-    Output_Error_Message "TempFileCreationFailed"
-    exit "$ExitStatusErrorTempFileCreationFailed"
-fi
-
-# Use wget to download the source url list file.
-if [ "$urlDownloadProgram" = "WGET" ]; then
-
-    wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
-         "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
-    wgetDownloadSourceUrlsListRetVal=$?
-
-    if [ "$wgetDownloadSourceUrlsListRetVal" -ne "0" ]; then
-        Output_Error_Message "DownloadWebSourceListFailed"
-        exit "$ExitStatusErrorDownloadWebSourceListFailed"
+    if [ "$mktempFileCreationRetVal" -ne "0" ]; then
+        Output_Error_Message "TempFileCreationFailed"
+        exit "$ExitStatusErrorTempFileCreationFailed"
     fi
 
-# Use curl to download the source url list file.
-elif [ "$urlDownloadProgram" = "CURL" ]; then
+    # Use wget to download the source url list file.
+    if [ "$urlDownloadProgram" = "WGET" ]; then
 
-    curl --silent --user-agent "$userAgent" "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
-    curlDownloadSourceUrlsListRetVal=$?
+        wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
+             "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
+        wgetDownloadSourceUrlsListRetVal=$?
 
-    if [ "$curlDownloadSourceUrlsListRetVal" -ne "0" ]; then
-        Output_Error_Message "DownloadWebSourceListFailed"
-        exit "$ExitStatusErrorDownloadWebSourceListFailed"
-    fi
-fi
+        if [ "$wgetDownloadSourceUrlsListRetVal" -ne "0" ]; then
+            Output_Error_Message "DownloadWebSourceListFailed"
+            exit "$ExitStatusErrorDownloadWebSourceListFailed"
+        fi
 
-# Read the urls from the source urls temp file into the $urlArray. Note: The Randomize_Url_List()
-# function needs the url array to be INDEXED IN NUMERICAL SEQUENCE FROM 0 or it will not randomize
-# the array correctly.
+    # Use curl to download the source url list file.
+    elif [ "$urlDownloadProgram" = "CURL" ]; then
 
-urlIndex="0"
+        curl --silent --user-agent "$userAgent" "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
+        curlDownloadSourceUrlsListRetVal=$?
 
-while read -r line ; do
-
-    # Check if $line is an url by seeing if the first 4 chars are 'http'.
-    lineFirst4Chars=${line:0:4}
-    lineFirst4CharsLC=$(echo "$lineFirst4Chars" | tr '[:upper:]' '[:lower:]')
-
-    # If so add the url in $line to $urlArray.
-    if [ "$lineFirst4CharsLC" = "http" ]; then
-        urlArray[$urlIndex]="$line"
-        let 'urlIndex = urlIndex + 1'
+        if [ "$curlDownloadSourceUrlsListRetVal" -ne "0" ]; then
+            Output_Error_Message "DownloadWebSourceListFailed"
+            exit "$ExitStatusErrorDownloadWebSourceListFailed"
+        fi
     fi
 
-done < "$tempFileNameForSourceUrls"
+    # Read the urls from the source urls temp file into the $urlArray.
+    # The urlArray must be INDEXED IN NUMERICAL SEQUENCE FROM 0.
 
-# Set the length of the urlArray array (indexed from 0).
-urlArrayLength="$urlIndex"
+    urlIndex="0"
 
-# Delete the temp file.
-if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
+    while read -r line ; do
 
-# If verbose is set, echo various diagnostic information.
-if [ "$verbose" = "TRUE" -a "$operationMode" = "GETIP" ]; then
-    printf "%-25s %s\n" "Source Urls Download:" "Succeeded"
-    printf "%-25s %s\n" "Source Urls Total:" "$urlArrayLength"
-fi
+        # Check if $line is an url by seeing if the first 4 chars are 'http'.
+        lineFirst4Chars=${line:0:4}
+        lineFirst4CharsLC=$(echo "$lineFirst4Chars" | tr '[:upper:]' '[:lower:]')
 
-# Check if the number of source urls is fewer than the required minimum.
-if [ "$urlArrayLength" -lt "$sourceUrlsMinimum" ]; then
-    Output_Error_Message "NotEnoughSourceUrls"
-    exit "$ExitStatusErrorNotEnoughSourceUrls"
-fi
+        # If so add the url in $line to $urlArray.
+        if [ "$lineFirst4CharsLC" = "http" ]; then
+            urlArray[$urlIndex]="$line"
+            let 'urlIndex = urlIndex + 1'
+        fi
+
+    done < "$tempFileNameForSourceUrls"
+
+    # Set the length of the urlArray array (indexed from 0).
+    urlArrayLength="$urlIndex"
+
+    # Delete the temp file.
+    if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
+}
 
 
 # Function that randomizes the $urlArray array. Since this script is being publicly released it is
@@ -874,9 +652,13 @@ Get_Ip_From_Url()
     # Assign $urlToDownload the value of the 1st function arg (NOT script arg).
     local urlToDownload="$1"
 
-    # Assign $tempFileName the value of the 2nd function arg (NOT script arg). This will be used
-    # to store the contents of the url.
-    local tempFileName="$2"
+    # Create a temp file.
+    local tempFileName=$(mktemp -q -t "getip.tmp.XXXXXX")
+    mktempFileCreationRetVal=$?
+
+    if [ "$mktempFileCreationRetVal" -ne "0" ]; then
+        return "$GetIpTempFileCreationFailed"
+    fi
 
     # Download the url and store its contents in the temp file. The process is forked to facilitate
     # the timeout procedure. The use of disown, which removes a job from the shell's active jobs
@@ -949,6 +731,9 @@ Get_Ip_From_Url()
         # working as expected then there will be exactly one IP address.
         local ipAddressList=$(Extract_Ip_Addresses_From_File "$tempFileName")
 
+        # Delete the temp file.
+        if [ -f "$tempFileNameForGetIp" ]; then rm "$tempFileNameForGetIp"; fi
+
         # Array to hold the IP address or addresses and an associated counter.
         local ipAddressValidArray=""
         local ipAddressValidCounter="0"
@@ -975,8 +760,7 @@ Get_Ip_From_Url()
         # returned, more than one unique and valid IP address was found, there is no way to tell
         # which of them is the user's IP address - failure.
         elif [ "$ipAddressValidCounter" -gt "1" ]; then
-            # If in test url mode then echo all the valid IP addresses that were found so that
-            # the test url mode code section can echo them to aid debugging.
+            # If in test url mode then echo all the valid IP addresses that were found.
             if [ "$operationMode" = "TESTURL" ]; then echo "$ipAddressList"; fi
             return "$GetIpMultipleValidIP"
         fi
@@ -998,6 +782,9 @@ Get_Ip_From_Url()
             kill -KILL "$urlDownloadProcessId" > /dev/null 2>&1
         fi
     fi
+
+    # Delete the temp file.
+    if [ -f "$tempFileNameForGetIp" ]; then rm "$tempFileNameForGetIp"; fi
 
     # The download process timed out, return the appropriate constant.
     return "$GetIpTimedOut"
@@ -1023,13 +810,6 @@ Verify_IP_List()
     # All the IP addresses in the array must be the same, return 0.
     return "0"
 }
-
-
-# Initiate the various variables used for stats in the check operation mode.
-statsValidIpAddressList=""
-statsTimesList=""
-statsTotalValidIp="0"
-statsTotalInValidIp="0"
 
 
 # Add IP's address, validity, and retrieval time to the statistics variables (used in check mode).
@@ -1187,7 +967,7 @@ Display_Stats()
 
     # Output the statistics.
 
-    echo "-----------------------------------------------------------------------------"
+    echo "------------------------------------------------------------------------------"
 
     printf "%-62s %s\n" "Total Number Sites Checked" "$urlArrayLength"
 
@@ -1217,13 +997,10 @@ Display_Stats()
     # Echo a warning if the number of unique IP addresses is > 1, and list them.
     if [ "$numUniqueIp" -gt "1" ]; then
         echo ""
-        echo "WARNING: The number of unique IP addresses retrieved exceeds one. It should be"
-        echo "exactly one - your IP address - returned by all the sources used for IP address"
-        echo "retrieval. One or more of the sources is no longer returning IP addresses"
-        echo "correctly. You should download the most recent version of the getip script."
-        echo "Advanced users can edit the urls in the script's sourceUrls array to remove"
-        echo "urls which are no longer functioning. If the latest version of the script has"
-        echo "a non-functioning source url in it, please contact the developer."
+        echo "WARNING: The number of unique IP addresses retrieved exceeds one, it should be"
+        echo "exactly one, your IP address. One or more of the sources is no longer suitable"
+        echo "for use by this script. If you have the time please contact the developer with"
+        echo "the url of the problematic source, use the -h option for contact details."
         echo ""
 
         # List each unique IP address in a table along with its number of occurrences.
@@ -1235,244 +1012,294 @@ Display_Stats()
         # assigned a value of 0 before the arithmetic operation takes place. So in the code below
         # all the members of the countIP[] array are effectively initialized to 0.
         local awkExpIpCount='{ countIP[$1]++ } END { for (ip in countIP) \
-                               printf("%-15d  -  %s\n", countIP[ip], ip); }'
+                               printf("%-15d     %s\n", countIP[ip], ip); }'
 
         printf "Unique IP Addresses List:\n\n"
-        printf "Num Occurrences  -  IP Address\n"
+        printf "Num Occurrences     IP Address\n"
         echo "$statsValidIpAddressList" | tr " " "\n" | awk "$awkExpIpCount" | sort -n
     fi
 
-    echo "-----------------------------------------------------------------------------"
+    echo "------------------------------------------------------------------------------"
 }
 
 
-# Flag variable to hold whether to calculate the time taken to get the IP address,
-# this will only be done in either check mode or if verbose is set.
-if [ "$operationMode" = "CHECK" -o "$verbose" = "TRUE" ]; then
-    timeIpRetrieval="TRUE"
-else
-    timeIpRetrieval="FALSE"
-fi
+Handle_Get_IP_Mode()
+{
+    # If verbose is set, echo various diagnostic information.
+    if [ "$verbose" = "TRUE" ]; then
+        printf "%-25s %s\n" "Script Version:" "$version"
+        printf "%-25s %s\n" "Operation Mode:" "$operationMode"
+        printf "%-25s %s\n" "Num IP Sources (To Use):" "$numIpToUseForGetIP"
+        printf "%-25s %s\n" "Timeout (Seconds):" "$timeout"
+        printf "%-25s %s\n" "Download Utility:" "$urlDownloadProgram"
+    fi
 
-# Call the function which randomizes the $urlArray array.
-if [ "$operationMode" = "GETIP" ]; then
+    # Download the source urls.
+    Read_Source_Url_List
 
+    if [ "$verbose" = "TRUE" ]; then
+        printf "%-25s %s\n" "Source Urls Download:" "Succeeded ($urlArrayLength Urls)"
+    fi
+
+    # Check if the number of source urls is fewer than the required minimum.
+    if [ "$urlArrayLength" -lt "$sourceUrlsMinimum" ]; then
+        Output_Error_Message "NotEnoughSourceUrls"
+        exit "$ExitStatusErrorNotEnoughSourceUrls"
+    fi
+
+    # Shuffle the source urls array.
     Randomize_Url_List
 
     # If verbose is set, echo various diagnostic information.
     if [ "$verbose" = "TRUE" ]; then
-        printf "%-25s %s\n" "Source Urls Randomizing:" "Finished"
-    fi
-fi
-
-# If in test url mode test the url, providing helpful output, and then exit.
-if [ "$operationMode" = "TESTURL" ]; then
-
-    # 'Pretty print' the test results.
-    printf "%-21s%s\n" "Testing Url:" "$testUrlAddress"
-
-    # Create a temp file for Get_Ip_From_Url() to use.
-    tempFileNameForGetIp=$(mktemp -q -t "getip.tmp.XXXXXX")
-    mktempFileCreationRetVal=$?
-
-    if [ "$mktempFileCreationRetVal" -ne "0" ]; then
-        Output_Error_Message "TempFileCreationFailed"
-        exit "$ExitStatusErrorTempFileCreationFailed"
+        printf "%-25s %s\n" "Source Urls Randomizing:" "Done"
     fi
 
-    # Use the function Get_Ip_From_Url() to retrieve the source $url, store its contents in the
+    # Array to hold the IP addresses retrieved in GETIP mode.
+    ipList=""
+
+    # Counter to hold how many IP addresses have so far been retrieved in GETIP mode.
+    ipCounter="0"
+
+    # Test error handling with 'fake' IP address.
+    # 1 = 1.2.3.4 IP address, 2 = has 2 IP addresses, 3 = no IP addresses.
+    # urlArray[1]="https://crius.feralhosting.com/gencon/fakeip1.html"
+    # urlArray[1]="https://crius.feralhosting.com/gencon/fakeip2.html"
+    # urlArray[1]="https://crius.feralhosting.com/gencon/fakeip3.html"
+
+    # The script's main loop iterates through the urls in the $urlArray array. If in GETIP mode
+    # the script will exit from within this loop if the IP address is successfully retrieved and
+    # then verified. If in check mode the loop will iterate through to completion.
+
+    for url in "${urlArray[@]}"; do
+
+        # If verbose is set then time the IP address retrieval.
+        if [ "$verbose" = "TRUE" ]; then timeStart=$(date +%s.%N); fi
+
+        # If verbose is set give user feedback.
+        if [ "$verbose" = "TRUE" ]; then
+            printf "\n%-25s %s\n" "Trying Source:" "$url"
+        fi
+
+        # Use the function Get_Ip_From_Url() to retrieve the source $url, store its contents in the
+        # $tempFileNameForGetIp temp file, and extract IP addresses from it. If a single properly
+        # formed IP address gets retrieved then it will be placed in $ipAddress.
+
+        ipAddress=$(Get_Ip_From_Url "$url")
+        getIpFromUrlRetVal=$?
+
+        # Failed due to temp file creation error.
+        if [ "$getIpFromUrlRetVal" -eq "$GetIpTempFileCreationFailed" ]; then
+            Output_Error_Message "TempFileCreationFailed"
+            exit "$ExitStatusErrorTempFileCreationFailed"
+        fi
+
+        # If verbose is set...
+        if [ "$verbose" = "TRUE" ]; then
+
+            # Calculate the time taken (reduce to 3 decimal places).
+            timeStop=$(date +%s.%N)
+            timeTaken=$(printf "%.3F" $(echo "$timeStop - $timeStart" | bc -l))
+
+            if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
+                ipStatusVerbose="Valid IP address: $ipAddress"
+
+            elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
+                ipStatusVerbose="Failed: No IP address"
+
+            elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
+                ipStatusVerbose="Failed: More than one IP address"
+
+            elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
+                ipStatusVerbose="Failed: Server timed out"
+            fi
+
+            printf "%-25s %s\n" "Status:" "$ipStatusVerbose"
+            printf "%-25s %s\n" "Duration (Seconds):" "$timeTaken"
+        fi
+
+        # Store valid IP addresses in an array and use Verify_IP_List() to check that all the IPs
+        # in the array are the same. If they are all the same and the required number of IP
+        # addresses to use for verification have been retrieved, then the IP address can be echoed
+        # and the script can exit. If the IP addresses in the array are not all the same then
+        # reset the variables and keep going so that different sources are then used.
+
+        if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
+
+            # Add the IP address to the verify array, and add 1 to the counter.
+            ipList[$ipCounter]="$ipAddress"
+            let "ipCounter = ipCounter + 1"
+
+            # If verbose is set give user feedback.
+            if [ "$verbose" = "TRUE" ]; then
+                printf "%-25s %s\n" "Add IP To List:" "$ipCounter of $numIpToUseForGetIP"
+            fi
+
+            # Check if all the IP addresses in the array are the same.
+            Verify_IP_List "${ipList[@]}"
+            verifyIpRetVal=$?
+
+            # If the IP addresses in the array are not all the same then reset the variables.
+            if [ "$verifyIpRetVal" -ne "0" ]; then
+
+                if [ "$verbose" = "TRUE" ]; then
+                    printf "\n%-25s %s\n" "IP List Verification:" "Failed [IP addresses differed]"
+                    printf "%-25s %s\n" "Status:" "Restart using different sources"
+                fi
+
+                # Reset the array and counter variables.
+                unset ipList
+                ipCounter="0"
+            fi
+
+            # The array contains the required number of IP addresses to use for verification. Note:
+            # The if statement below will only evaluate to true if the IP addresses in the array are
+            # all the same, if they weren't then $ipCounter would have been set to 0 above.
+            if [ "$ipCounter" -eq "$numIpToUseForGetIP" ]; then
+
+                # If verbose is set...
+                if [ "$verbose" = "TRUE" ]; then
+                    printf "\n%-25s %s" "IP List Verification:" "Succeeded "
+                    printf "%s\n" "[$ipCounter identical IP addresses]"
+                    printf "\n%-25s %s\n" "IPv4 address:" "$ipAddress"
+                else
+                    if [ "$bareOutput" = "TRUE" ]; then
+                        printf "%s\n" "$ipAddress"
+                    else
+                        printf "%s\n" "IPv4 address: $ipAddress"
+                    fi
+                fi
+
+                exit "$ExitStatusSuccess"
+            fi
+        fi
+
+    done  # End of loop through $urlArray loop.
+
+    # If this section is reached then the script failed to supply a valid IP address.
+    Output_Error_Message "FailedToGetIPAddress"
+    exit "$ExitStatusErrorFailedToGetIPAddress"
+}
+
+
+Handle_Test_Url_Mode()
+{
+    # Get the Use the function Get_Ip_From_Url() to retrieve the source $url, store its contents in the
     # $tempFileNameForGetIp temp file, and extract IP addresses from it. If one or more properly
     # formed IP addresses are retrieved then they will be placed in $ipAddress.
 
     # Time the IP address retrieval.
     timeStart=$(date +%s.%N)
 
-    ipAddress=$(Get_Ip_From_Url "$testUrlAddress" "$tempFileNameForGetIp")
+    ipAddress=$(Get_Ip_From_Url "$testUrlAddress")
     getIpFromUrlRetVal=$?
 
     timeStop=$(date +%s.%N)
     timeTaken=$(printf "%.3F" $(echo "$timeStop - $timeStart" | bc -l))
 
-    # Delete the temp file.
-    if [ -f "$tempFileNameForGetIp" ]; then rm "$tempFileNameForGetIp"; fi
-
-    # Handle the various return possibilities.
-
-    if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
-        printf "%-21s%s\n" "Status:" "Success"
-        printf "%-21s%s\n" "Outcome:" "Url returned a single valid IP address"
-        printf "%-21s%s\n" "IP Address:" "$ipAddress"
-
-    elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
-        printf "%-21s%s\n" "Status:" "Failure"
-        printf "%-21s%s\n" "Outcome:" "Url returned more than one valid IP address"
-        ipAddressCSV=$(echo "$ipAddress" | tr '\n' ' ')
-        printf "%-21s%s\n" "IP Addresses:" "$ipAddressCSV"
-
-    elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
-        printf "%-21s%s\n" "Status:" "Failure"
-        printf "%-21s%s\n" "Outcome:" "Url did not return a valid IP address"
-
-    elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
-        printf "%-21s%s\n" "Status:" "Failure"
-        printf "%-21s%s\n" "Outcome:" "Server timed out"
-    fi
-
-    # Output the time taken and the current timeout value.
-    printf "%-21s%s\n" "Duration (Seconds):" "$timeTaken"
-    printf "%-21s%s\n" "Timeout  (Seconds):" "$timeout"
-
-    # The exit point of the script in test url mode.
-    exit "$ExitStatusSuccess"
-fi
-
-# Array to hold the IP addresses retrieved in GETIP mode.
-ipList=""
-
-# Counter to hold how many IP addresses have so far been retrieved in GETIP mode.
-ipCounter="0"
-
-# Test error handling with 'fake' IP address.
-# 1 = 1.2.3.4 IP address, 2 = has 2 IP addresses, 3 = no IP addresses.
-# urlArray[1]="https://crius.feralhosting.com/gencon/fakeip1.html"
-# urlArray[1]="https://crius.feralhosting.com/gencon/fakeip2.html"
-# urlArray[1]="https://crius.feralhosting.com/gencon/fakeip3.html"
-
-# The script's main loop iterates through the urls in the $urlArray array. If in GETIP mode
-# the script will exit from within this loop if the IP address is successfully retrieved and
-# then verified. If in check mode the loop will iterate through to completion.
-
-for url in "${urlArray[@]}"; do
-
-    # If in check mode or verbose is set then time the IP address retrieval.
-    if [ "$timeIpRetrieval" = "TRUE" ]; then timeStart=$(date +%s.%N); fi
-
-    # If verbose is set and in GETIP mode.
-    if [ "$verbose" = "TRUE" -a "$operationMode" = "GETIP" ]; then
-        printf "\n%-25s %s\n" "Trying Source:" "$url"
-    fi
-
-    # Create a temp file for Get_Ip_From_Url() to use.
-    tempFileNameForGetIp=$(mktemp -q -t "getip.tmp.XXXXXX")
-    mktempFileCreationRetVal=$?
-
-    if [ "$mktempFileCreationRetVal" -ne "0" ]; then
+    # Failed due to temp file creation error.
+    if [ "$getIpFromUrlRetVal" -eq "$GetIpTempFileCreationFailed" ]; then
         Output_Error_Message "TempFileCreationFailed"
         exit "$ExitStatusErrorTempFileCreationFailed"
     fi
 
-    # Use the function Get_Ip_From_Url() to retrieve the source $url, store its contents in the
-    # $tempFileNameForGetIp temp file, and extract IP addresses from it. If a single properly
-    # formed IP address gets retrieved then it will be placed in $ipAddress.
+    # 'Pretty print' the test results.
+    printf "%-25s %s\n" "Testing Url:" "$testUrlAddress"
 
-    ipAddress=$(Get_Ip_From_Url "$url" "$tempFileNameForGetIp")
-    getIpFromUrlRetVal=$?
-
-    # Delete the temp file.
-    if [ -f "$tempFileNameForGetIp" ]; then rm "$tempFileNameForGetIp"; fi
-
-    # Set $ipStatus and $ipStatusVerbose on the basis of the Get_Ip_From_Url() function's
-    # return value. The possible return values are as follows:
-
-    # $GetIpSingleValidIP      - success, a single valid IP address was retrieved.
-    # $GetIpNoValidIP          - failure, no valid IP address at all.
-    # $GetIpMultipleValidIP    - failure, more than one valid IP address.
-    # $GetIpTimedOut           - failure, the timeout was exceeded.
+    # Handle the various return possibilities.
 
     if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
-        ipStatus="VALID_IP"
-        ipStatusVerbose="Valid IP address: $ipAddress"
-
-    elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
-        ipStatus="NO_IP_ADDRESS"
-        ipStatusVerbose="Failed: No IP address"
+        printf "%-25s %s\n" "Status:" "Success"
+        printf "%-25s %s\n" "Outcome:" "Url returned a single valid IP address"
+        printf "%-25s %s\n" "IP Address:" "$ipAddress"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
-        ipStatus="IP_NOT_UNIQUE"
-        ipStatusVerbose="Failed: More than one IP address"
+        printf "%-25s %s\n" "Status:" "Failure"
+        printf "%-25s %s\n" "Outcome:" "Url returned more than one valid IP address"
+        ipAddressSSV=$(echo "$ipAddress" | tr '\n' ' ' | sed "s/ /, /g" | sed "s/, $//g")
+        printf "%-25s %s\n" "IP Addresses:" "$ipAddressSSV"
+
+    elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
+        printf "%-25s %s\n" "Status:" "Failure"
+        printf "%-25s %s\n" "Outcome:" "Url did not return a valid IP address"
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
-        ipStatus="URL_TIMED_OUT"
-        ipStatusVerbose="Failed: Server timed out"
+        printf "%-25s %s\n" "Status:" "Failure"
+        printf "%-25s %s\n" "Outcome:" "Server timed out"
     fi
 
-    # If in check mode or verbose is set, calculate the time taken (reduce to 3 decimal places).
-    if [ "$timeIpRetrieval" = "TRUE" ]; then
+    # Output the time taken and the current timeout value.
+    printf "%-25s %s\n" "Duration (Seconds):" "$timeTaken"
+    printf "%-25s %s\n" "Timeout  (Seconds):" "$timeout"
+
+    # The exit point of the script in test url mode.
+    exit "$ExitStatusSuccess"
+}
+
+
+Handle_Check_Mode()
+{
+    # Print various diagnostic information.
+    printf "%-25s %s\n" "Script Version:" "$version"
+    printf "%-25s %s\n" "Operation Mode:" "$operationMode"
+    printf "%-25s %s\n" "Timeout (Seconds):" "$timeout"
+    printf "%-25s %s\n" "Download Utility:" "$urlDownloadProgram"
+
+    # Download the source urls.
+    Read_Source_Url_List
+
+    printf "%-25s %s\n\n" "Source Urls Download:" "Succeeded ($urlArrayLength Urls)"
+
+    # awk expression for 'pretty printing' the test results.
+    awkExprPrettyPrint='{ printf "%-23s %-40s %s\n", $1, $2, $3 }'
+    echo "------------------------------------------------------------------------------"
+    echo "Secs" "Url" "IP/Status" | awk "$awkExprPrettyPrint"
+    echo "------------------------------------------------------------------------------"
+
+    # The script's main loop iterates through the urls in the $urlArray array. If in GETIP mode
+    # the script will exit from within this loop if the IP address is successfully retrieved and
+    # then verified. If in check mode the loop will iterate through to completion.
+
+    for url in "${urlArray[@]}"; do
+
+        # Time the IP address retrieval.
+        timeStart=$(date +%s.%N);
+
+        # Use the function Get_Ip_From_Url() to retrieve the source $url, store its contents in the
+        # $tempFileNameForGetIp temp file, and extract IP addresses from it. If a single properly
+        # formed IP address gets retrieved then it will be placed in $ipAddress.
+
+        ipAddress=$(Get_Ip_From_Url "$url")
+        getIpFromUrlRetVal=$?
+
+        # Failed due to temp file creation error.
+        if [ "$getIpFromUrlRetVal" -eq "$GetIpTempFileCreationFailed" ]; then
+            Output_Error_Message "TempFileCreationFailed"
+            exit "$ExitStatusErrorTempFileCreationFailed"
+        fi
+
+        # Set $ipStatus according to Get_Ip_From_Url()'s return value.
+
+        if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
+            ipStatus="VALID_IP"
+
+        elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
+            ipStatus="NO_IP_ADDRESS"
+
+        elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
+            ipStatus="IP_NOT_UNIQUE"
+
+        elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
+            ipStatus="URL_TIMED_OUT"
+        fi
+
+        # Calculate the time taken (reduce to 3 decimal places).
         timeStop=$(date +%s.%N)
         timeTaken=$(printf "%.3F" $(echo "$timeStop - $timeStart" | bc -l))
-    fi
 
-    # If verbose is set and in GETIP mode.
-    if [ "$verbose" = "TRUE" -a "$operationMode" = "GETIP" ]; then
-        printf "%-25s %s\n" "Status:" "$ipStatusVerbose"
-        printf "%-25s %s\n" "Duration (Seconds):" "$timeTaken"
-    fi
-
-    # Code to handle the operation mode: GETIP
-
-    # If operating in GETIP mode store valid IP addresses in an array and use Verify_IP_List() to
-    # check that all the IPs in the array are the same. If they are all the same and the required
-    # number of IP addresses to use for verification have been retrieved, then the IP address can
-    # be echoed and the script can exit. If the IP addresses in the array are not all the same
-    # then reset the variables and keep going so that different sources are then used.
-
-    if [ "$operationMode" = "GETIP" -a "$ipStatus" = "VALID_IP" ]; then
-
-        # Add the IP address to the verify array, and add 1 to the counter.
-        ipList[$ipCounter]="$ipAddress"
-        let "ipCounter = ipCounter + 1"
-
-        # If verbose is set...
-        if [ "$verbose" = "TRUE" ]; then
-            printf "%-25s %s\n" "Add IP To List:" "$ipCounter of $numIpToUseForGetIP"
-        fi
-
-        # Check if all the IP addresses in the array are the same.
-        Verify_IP_List "${ipList[@]}"
-        multiIpCheckRetVal=$?
-
-        # If the IP addresses in the array are not all the same then reset the variables.
-        if [ "$multiIpCheckRetVal" -ne "0" ]; then
-
-            if [ "$verbose" = "TRUE" ]; then
-                printf "\n%-25s %s\n" "IP List Verification:" "Failed [IP addresses differed]"
-                printf "%-25s %s\n" "Status:" "Restart using different sources"
-            fi
-
-            # Reset the array and counter variables.
-            unset ipList
-            ipCounter="0"
-        fi
-
-        # The array contains the required number of IP addresses to use for verification.
-        # Note: The if statement below will only evaluate to true if the IP addresses in the array
-        # are all the same, if they weren't then $ipCounter would have been set to 0 above.
-        if [ "$ipCounter" -eq "$numIpToUseForGetIP" ]; then
-
-            # If verbose is set...
-            if [ "$verbose" = "TRUE" ]; then
-                printf "\n%-25s %s" "IP List Verification:" "Succeeded "
-                printf "%s\n" "[$ipCounter identical IP addresses]"
-                printf "\n%-25s %s\n" "IPv4 address:" "$ipAddress"
-            else
-                if [ "$bareOutput" = "TRUE" ]; then
-                    printf "%s\n" "$ipAddress"
-                else
-                    printf "%s\n" "IPv4 address: $ipAddress"
-                fi
-            fi
-
-            exit "$ExitStatusSuccess"
-        fi
-    fi
-
-    # Code to handle the operation mode: CHECK
-
-    # If operating in check mode neatly display the source url, the IP address or an error
-    # message if retrieving it failed, and the time taken to retrieve the IP address, for
-    # each of the source urls and format the data as a table.
-
-    if [ "$operationMode" = "CHECK" ]; then
+        # Neatly display the source url, the IP address or an error message if retrieving it
+        # failed, and the time taken to retrieve the IP address, for each of the source urls and
+        # format the data as a table.
 
         # awk expression for 'pretty printing' the test results.
         awkExprPrettyPrint='{ printf "%-8s %-53s %s\n", $1, $2, $3 }'
@@ -1493,21 +1320,8 @@ for url in "${urlArray[@]}"; do
 
         # Add info. to the stored statistics for displaying at the end.
         Add_To_Stats "$ipAddress" "$ipStatus" "$timeTaken"
-    fi
 
-done  # End of loop through $urlArray loop.
-
-
-# If operating in GETIP mode, then if this section of the script is reached then the script failed
-# to supply a valid IP address.
-if [ "$operationMode" = "GETIP" ]; then
-    Output_Error_Message "FailedToGetIPAddress"
-    exit "$ExitStatusErrorFailedToGetIPAddress"
-fi
-
-# If operating in check mode, then display the check mode statistics.
-
-if [ "$operationMode" = "CHECK" ]; then
+    done  # End of loop through $urlArray loop.
 
     # Write an error message if all the urls failed.
     if [ "$statsTotalInValidIp" -eq "$urlArrayLength" ]; then
@@ -1517,10 +1331,267 @@ if [ "$operationMode" = "CHECK" ]; then
 
     # Display the stats info.
     Display_Stats
+
+    # The exit point of the script in check mode.
+    exit "$ExitStatusSuccess"
+}
+
+
+# Before handling the arguments with getopts, check for long options:
+
+# Check if the first arg is "--help", if so display help and exit (-h is handled by getopts).
+if [ "$1" = "--help" -o "$1" = "-?" ]; then
+    Display_Usage_Message
+    exit "$ExitStatusSuccess"
+
+# Check if the first arg is "--version", if so display version number and exit.
+elif [ "$1" = "--version" ]; then
+    echo "getip v. $version"
+    exit "$ExitStatusSuccess"
 fi
 
-# The exit point of the script in check mode.
-exit "$ExitStatusSuccess"
+# Use getopts to handle the command line arguments. ToDo: Add long option support.
+while getopts ":gcu:bvhn:t:d:" option; do
+
+    case $option in
+
+        g)
+            # -g has been used, set operation mode to GETIP.
+            operationMode="GETIP"
+            let "userSetModesCounter = userSetModesCounter + 1"
+            ;;
+
+        c)
+            # -c has been used, set operation mode to CHECK.
+            operationMode="CHECK"
+            let "userSetModesCounter = userSetModesCounter + 1"
+            ;;
+
+        u)
+            # -u url has been used, set operation mode to TESTURL and set the url address.
+            operationMode="TESTURL"
+            testUrlAddress="$OPTARG"
+            let "userSetModesCounter = userSetModesCounter + 1"
+
+            # Check if $testUrlAddress is an url by seeing if the first 4 chars are 'http'.
+            urlFirst4Chars=${testUrlAddress:0:4}
+            urlFirst4CharsLowerCase=$(echo "$urlFirst4Chars" | tr '[:upper:]' '[:lower:]')
+
+            if [ "$urlFirst4CharsLowerCase" != "http" ]; then
+                Output_Error_Message "ArgInvalid" "-u"
+                exit "$ExitStatusErrorUrlArgInvalid"
+            fi
+            ;;
+
+        b)
+            # -b has been used, turn on bare output.
+            bareOutput="TRUE"
+            ;;
+
+        v)
+            # -v has been used, turn on verbose.
+            verbose="TRUE"
+            ;;
+
+        h)
+            # -h has been used, display help and then exit.
+            Display_Usage_Message
+            exit "$ExitStatusSuccess"
+            ;;
+
+        n)
+            # -n num has been used, set the num source IPs to use and flag variable.
+            numIpToUseForGetIP="$OPTARG"
+            userSetNumIpToUseForGetIP="TRUE"
+
+            # Use sed to check that $numIpToUseForGetIP is a single digit >=2 and <=5.
+            numMin="2"
+            numMax="5"
+
+            sedExpIsNumInRange="s/^[$numMin-$numMax]\{1\}$/SINGLE_DIGIT_IN_RANGE/g"
+            isNumInRange=$(echo "$numIpToUseForGetIP" | sed "$sedExpIsNumInRange")
+
+            # A single digit in range has not been entered.
+            if [ "$isNumInRange" != "SINGLE_DIGIT_IN_RANGE" ]; then
+                Output_Error_Message "ArgInvalid" "-n"
+                exit "$ExitStatusErrorNumSourcesArgInvalid"
+            fi
+            ;;
+
+        t)
+            # -t seconds has been used, set the timeout flag and arg variables.
+            timeoutSecondsArg="$OPTARG"
+            userSetTimeout="TRUE"
+
+            # Check that $timeoutSecondsArg is a number, int or real. This is a Bash hack to use
+            # awk to check whether a variable is any kind of number (int or real).
+            awkIsNum='END { if ($1 + 0 == $1) print "Num"; else print "NotNum" }'
+            awkIsNumRetVal=$(echo "$timeoutSecondsArg" | awk "$awkIsNum")
+
+            if [ "$awkIsNumRetVal" = "NotNum" ]; then
+                Output_Error_Message "ArgInvalid" "-t"
+                exit "$ExitStatusErrorTimeoutArgInvalid"
+            fi
+
+            # Check that $timeoutSecondsArg is a positive number in range, >=0.2 and <=30.
+            timeoutMin="0.2"
+            timeoutMax="30"
+
+            bcExpIsNumInRange="if ($timeoutSecondsArg < $timeoutMin || \
+                                   $timeoutSecondsArg > $timeoutMax) 1 else 0"
+
+            bcExpIsNumInRangeRetVal=$(echo "$bcExpIsNumInRange" | bc -l)
+
+            # A positive number in range has not been entered.
+            if [ "$bcExpIsNumInRangeRetVal" -eq "1" ]; then
+                Output_Error_Message "ArgInvalid" "-t"
+                exit "$ExitStatusErrorTimeoutArgInvalid"
+            fi
+            ;;
+
+        d)
+            # -d download_tool has been used, set which tool to use.
+
+            userSetUrlDownloadProgramLC=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
+
+            if [ "$userSetUrlDownloadProgramLC" = "wget" ]; then
+                userSetUrlDownloadProgram="WGET"
+
+            elif [ "$userSetUrlDownloadProgramLC" = "curl" ]; then
+                userSetUrlDownloadProgram="CURL"
+
+            else
+                Output_Error_Message "ArgInvalid" "-d"
+                exit "$ExitStatusErrorUrlDownloadProgramArgInvalid"
+            fi
+            ;;
+
+        \?)
+            # User entered an invalid option, e.g. '-x'. Note: Invalid args with no '-' prefix,
+            # are handled immediately after this while loop.
+            Output_Error_Message "OptionInvalid"
+            exit "$ExitStatusErrorOptionInvalid"
+            ;;
+
+        :)
+            # User omitted the required additional arg of either the, -u, -n or -t option.
+            Output_Error_Message "ArgMissing" "$OPTARG"
+            exit "$ExitStatusErrorArgMissing"
+            ;;
+    esac
+done
+
+
+# getopts stops processing args if it encounters an arg without a '-' prefix (unless it is an
+# $OPTARG in which case processing continues). Check if any invalid args have been entered by
+# working out how many args getopts has actually processed, shifting them off, and if more
+# than 0 args remain then an invalid arg must have been entered.
+
+let "numArgsProcessedByGetopts = OPTIND - 1"
+shift "$numArgsProcessedByGetopts"
+numArgsRemaining="$#"
+
+if [ "$numArgsRemaining" -gt "0" ]; then
+    Output_Error_Message "OptionInvalid"
+    exit "$ExitStatusErrorOptionInvalid"
+fi
+
+# If the user set more than 1 mode on the command line, display error and exit.
+if [ "$userSetModesCounter" -gt "1" ]; then
+    Output_Error_Message "UserSetMoreThanOneMode"
+    exit "$ExitStatusErrorUserSetMoreThanOneMode"
+fi
+
+# Set the appropriate timeout.
+
+# If the user set the timeout use that otherwise use the default.
+if [ "$userSetTimeout" = "TRUE" ]; then
+    timeout="$timeoutSecondsArg"
+else
+    if [ "$operationMode" = "GETIP" ]; then
+        timeout="$timeoutGetIPMode"
+    elif [ "$operationMode" = "CHECK" ]; then
+        timeout="$timeoutCheckMode"
+    elif [ "$operationMode" = "TESTURL" ]; then
+        timeout="$timeoutTestUrlMode"
+    fi
+fi
+
+# If the user has set both verbose and bare output, display error and exit.
+if [ "$verbose" = "TRUE" -a "$bareOutput" = "TRUE" ]; then
+    Output_Error_Message "UserSetVerboseAndBare"
+    exit "$ExitStatusErrorUserSetVerboseAndBare"
+fi
+
+# Either wget or curl can be used to download the source urls.
+# $urlDownloadProgram will hold which to use, either: 'WGET' or 'CURL'.
+
+# Set the default download program (which to use if both are installed).
+# urlDefaultDownloadProgram="CURL"
+urlDefaultDownloadProgram="WGET"
+
+# Check whether wget and curl are installed, at least one is required.
+hash wget > /dev/null 2>&1
+isWgetInstalled=$?
+hash curl > /dev/null 2>&1
+isCurlInstalled=$?
+
+# Decide whether to use wget or curl for web page url downloading.
+
+# If the user has not set which one to use on the command line.
+if [ "$userSetUrlDownloadProgram" = "FALSE" ]; then
+
+    # If both wget and curl are installed, use the default.
+    if [ "$isWgetInstalled" -eq "0" -a "$isCurlInstalled" -eq "0" ]; then
+        urlDownloadProgram="$urlDefaultDownloadProgram"
+
+    # If only wget is installed, use that.
+    elif [ "$isWgetInstalled" -eq "0" -a "$isCurlInstalled" -ne "0" ]; then
+        urlDownloadProgram="WGET"
+
+    # If only curl is installed, use that.
+    elif [ "$isCurlInstalled" -eq "0" -a "$isWgetInstalled" -ne "0" ]; then
+        urlDownloadProgram="CURL"
+
+    # If neither wget nor curl are installed, display error and exit.
+    else
+        Output_Error_Message "WgetAndCurlNotInstalled"
+        exit "$ExitStatusErrorUrlDownloadProgramNotInstalled"
+    fi
+
+# If the user has set which one to use on the command line.
+else
+
+    # If the user set wget, use that if it is installed.
+    if [ "$userSetUrlDownloadProgram" = "WGET" -a "$isWgetInstalled" -eq "0" ]; then
+        urlDownloadProgram="WGET"
+
+    elif [ "$userSetUrlDownloadProgram" = "WGET" -a "$isWgetInstalled" -ne "0" ]; then
+        Output_Error_Message "WgetNotInstalled"
+        exit "$ExitStatusErrorUrlDownloadProgramNotInstalled"
+
+    # If the user set curl, use that if it is installed.
+    elif [ "$userSetUrlDownloadProgram" = "CURL" -a "$isCurlInstalled" -eq "0" ]; then
+        urlDownloadProgram="CURL"
+
+    elif [ "$userSetUrlDownloadProgram" = "CURL" -a "$isCurlInstalled" -ne "0" ]; then
+        Output_Error_Message "CurlNotInstalled"
+        exit "$ExitStatusErrorUrlDownloadProgramNotInstalled"
+    fi
+fi
+
+# Call the operation mode's function.
+
+if [ "$operationMode" = "GETIP" ]; then
+    Handle_Get_IP_Mode
+
+elif [ "$operationMode" = "TESTURL" ]; then
+    Handle_Test_Url_Mode
+
+elif [ "$operationMode" = "CHECK" ]; then
+    Handle_Check_Mode
+fi
+
 
 ##
 ## END OF SCRIPT.
