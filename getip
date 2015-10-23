@@ -152,13 +152,16 @@
 # Holds the script version number.
 version="0.9c"
 
-# Holds the url of the list of source urls.
-sourceUrlsListUrl="https://crius.feralhosting.com/gencon/SourceUrlsList"
+# Holds the default url of the list of web sources.
+defaultUrlWebSourcesList="https://crius.feralhosting.com/gencon/SourceUrlsList"
+
+# Holds the url or local file if the user set the location of the web sources list (the -s option).
+userSetWebSourcesList="FALSE"
 
 # Holds the minimum number of source urls that are required.
 sourceUrlsMinimum="15"
 
-# Array which holds the urls from $sourceUrlsListUrl - the array is populated below.
+# Array which holds the urls from $urlWebSourcesList - the array is populated below.
 urlArray=""
 
 # The number of urls in $urlArray, set below.
@@ -171,21 +174,18 @@ operationMode="GETIP"
 # Sets the default number of sources to use in GETIP mode. Recommended: 2 (Range: 2-5).
 numIpToUseForGetIP="2"
 
-# Set the default timeout in seconds for the retrieval of each source. A different default timeout
-# can be set for each mode. Timeouts may be fractions of a second, e.g. 1.5, 0.75, .75
-
 # The timeout variable will be set to the appropriate value later.
 timeout="0"
 
-# GETIP mode: keep the timeout low so that if a source is offline or slow to respond the script
-# can move on to the next source. Recommended: 0.75 to 3.0.
-timeoutGetIPMode="1.5"
+# GETIP mode default timeout: keep the timeout low so that if a source is offline or slow to
+# respond the script can move on to the next source. Recommended: 0.75 to 3.0.
+defaultTimeoutGetIPMode="1.5"
 
-# CHECK mode: set the timeout high to give the url a chance to succeed. Recommended: 10.
-timeoutCheckMode="10"
+# CHECK mode default timeout: set the timeout high to give the url a chance to succeed.
+defaultTimeoutCheckMode="10"
 
-# TESTURL mode: set the timeout high to give the url a chance to succeed. Recommended: 10.
-timeoutTestUrlMode="10"
+# TESTURL mode default timeout: set the timeout high to give the url a chance to succeed.
+defaultTimeoutTestUrlMode="10"
 
 # Web url of source to test in TESTURL mode.
 testUrlAddress=""
@@ -196,9 +196,6 @@ urlDefaultDownloadProgram="WGET"
 
 # Variable to hold if the user has set the download program (the -d option).
 userSetUrlDownloadProgram="FALSE"
-
-# Variable to hold if the user has set the number of source IPs to use (the -n option).
-userSetNumIpToUseForGetIP="FALSE"
 
 # Variable to hold if the user has set a timeout (the -t option).
 userSetTimeout="FALSE"
@@ -238,20 +235,23 @@ statsTotalInValidIp="0"
 # Constants to hold the various exit statuses of the script.
 # Careful using ST's InsertNums here, success must be 0 not 1.
 ExitStatusSuccess="0"
-ExitStatusErrorUrlArgInvalid="101"
-ExitStatusErrorNumSourcesArgInvalid="102"
-ExitStatusErrorTimeoutArgInvalid="103"
-ExitStatusErrorUrlDownloadProgramArgInvalid="104"
-ExitStatusErrorOptionInvalid="105"
-ExitStatusErrorArgMissing="106"
-ExitStatusErrorUserSetMoreThanOneMode="107"
-ExitStatusErrorUserSetVerboseAndBare="108"
-ExitStatusErrorUrlDownloadProgramNotInstalled="109"
-ExitStatusErrorDownloadWebSourceListFailed="110"
-ExitStatusErrorNotEnoughSourceUrls="111"
-ExitStatusErrorTempFileCreationFailed="112"
-ExitStatusErrorFailedToGetIPAddress="113"
-ExitStatusErrorCheckModeAllUrlsFailed="114"
+ExitStatusErrorNumSourcesArgInvalid="101"
+ExitStatusErrorTimeoutArgInvalid="102"
+ExitStatusErrorUrlDownloadProgramArgInvalid="103"
+ExitStatusErrorOptionInvalid="104"
+ExitStatusErrorArgMissing="105"
+ExitStatusErrorUserSetMoreThanOneMode="106"
+ExitStatusErrorUserSetVerboseAndBare="107"
+ExitStatusErrorUrlDownloadProgramNotInstalled="108"
+ExitStatusErrorReadWebSourceListFailed="109"
+ExitStatusErrorNotEnoughSourceUrls="110"
+ExitStatusErrorTempFileCreationFailed="111"
+ExitStatusErrorFailedToGetIPAddress="112"
+ExitStatusErrorCheckModeAllUrlsFailed="113"
+
+# Variables used only for neatly displaying info. when verbose is set.
+webSourcesListForDisplay=""
+urlDownloadProgramForDisplay=""
 
 
 #
@@ -406,9 +406,9 @@ Output_Error_Message()
     elif [ "$errToDisplay" = "TempFileCreationFailed" ]; then
         echo "Unable to create a temp file using 'mktemp'." >&2
 
-    elif [ "$errToDisplay" = "DownloadWebSourceListFailed" ]; then
-        echo "Unable to download the list of web sources from:" >&2
-        echo "$sourceUrlsListUrl" >&2
+    elif [ "$errToDisplay" = "ReadWebSourceListFailed" ]; then
+        echo "Unable to access the list of web sources located at:" >&2
+        echo "$additionalInfo" >&2
 
     elif [ "$errToDisplay" = "NotEnoughSourceUrls" ]; then
         echo "Not enough web sources urls, the minimum required is $sourceUrlsMinimum." >&2
@@ -434,46 +434,78 @@ Output_Error_Message()
 }
 
 
-# Function to fetch the web sources list and store the urls in the $urlArray array.
+# Function to store the urls from the appropriate web sources list in $urlArray.
 Read_Source_Url_List()
 {
-    # Create a temp file to store the online source url list file in.
-    # Don't use 'local' or $? won't work.
-    tempFileNameForSourceUrls=$(mktemp -q -t "getip.tmp.XXXXXX")
-    mktempFileCreationRetVal=$?
+    local urlWebSourcesList=""
+    local fileWebSourcesList=""
+    local isWebSourcesListUrlOrFile=""
 
-    if [ "$mktempFileCreationRetVal" -ne "0" ]; then
-        Output_Error_Message "TempFileCreationFailed"
-        exit "$ExitStatusErrorTempFileCreationFailed"
-    fi
+    # If the user has not set the web sources list use the default url.
+    if [ "$userSetWebSourcesList" = "FALSE" ]; then
 
-    # Use wget to download the source url list file.
-    if [ "$urlDownloadProgram" = "WGET" ]; then
+        isWebSourcesListUrlOrFile="URL"
+        urlWebSourcesList="$defaultUrlWebSourcesList"
+        webSourcesListForDisplay="$defaultUrlWebSourcesList"
 
-        wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
-             "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
-        wgetDownloadSourceUrlsListRetVal=$?
-
-        if [ "$wgetDownloadSourceUrlsListRetVal" -ne "0" ]; then
-            Output_Error_Message "DownloadWebSourceListFailed"
-            exit "$ExitStatusErrorDownloadWebSourceListFailed"
-        fi
-
-    # Use curl to download the source url list file.
-    elif [ "$urlDownloadProgram" = "CURL" ]; then
-
-        curl --silent --user-agent "$userAgent" "$sourceUrlsListUrl" > "$tempFileNameForSourceUrls"
-        curlDownloadSourceUrlsListRetVal=$?
-
-        if [ "$curlDownloadSourceUrlsListRetVal" -ne "0" ]; then
-            Output_Error_Message "DownloadWebSourceListFailed"
-            exit "$ExitStatusErrorDownloadWebSourceListFailed"
+    # If the user has set the web sources list check if $userSetWebSourcesList is a local file, if
+    # so use that, otherwise assume it's an url.
+    else
+        if [ -f "$userSetWebSourcesList" ]; then
+            isWebSourcesListUrlOrFile="FILE"
+            fileWebSourcesList="$userSetWebSourcesList"
+            webSourcesListForDisplay="$userSetWebSourcesList"
+        else
+            isWebSourcesListUrlOrFile="URL"
+            urlWebSourcesList="$userSetWebSourcesList"
+            webSourcesListForDisplay="$userSetWebSourcesList"
         fi
     fi
 
-    # Read the urls from $tempFileNameForSourceUrls into the $urlArray.
+    # If the web sources list is an url, download it into a temp file.
+    if [ "$isWebSourcesListUrlOrFile" = "URL" ]; then
+
+        # Create a temp file to store the online source url list file in.
+        # Don't use 'local' or $? won't work.
+        tempFileSourceUrls=$(mktemp -q -t "getip.tmp.XXXXXX")
+        mktempFileCreationRetVal=$?
+
+        if [ "$mktempFileCreationRetVal" -ne "0" ]; then
+            Output_Error_Message "TempFileCreationFailed"
+            exit "$ExitStatusErrorTempFileCreationFailed"
+        fi
+
+        # Use wget to download the source url list file.
+        if [ "$urlDownloadProgram" = "WGET" ]; then
+
+            wget --quiet --tries=1 --user-agent="$userAgent" --output-document=- \
+                 "$urlWebSourcesList" > "$tempFileSourceUrls"
+            wgetDownloadSourceUrlsListRetVal=$?
+
+            if [ "$wgetDownloadSourceUrlsListRetVal" -ne "0" ]; then
+                Output_Error_Message "ReadWebSourceListFailed" "$urlWebSourcesList"
+                exit "$ExitStatusErrorReadWebSourceListFailed"
+            fi
+
+        # Use curl to download the source url list file.
+        elif [ "$urlDownloadProgram" = "CURL" ]; then
+
+            curl --silent --user-agent "$userAgent" "$urlWebSourcesList" > "$tempFileSourceUrls"
+            curlDownloadSourceUrlsListRetVal=$?
+
+            if [ "$curlDownloadSourceUrlsListRetVal" -ne "0" ]; then
+                Output_Error_Message "ReadWebSourceListFailed" "$urlWebSourcesList"
+                exit "$ExitStatusErrorReadWebSourceListFailed"
+            fi
+        fi
+
+        # Set the filename for the array reading to the temp filename.
+        fileWebSourcesList="$tempFileSourceUrls"
+    fi
+
+    # Read the urls from $fileWebSourcesList into $urlArray.
+
     # The urlArray must be INDEXED IN NUMERICAL SEQUENCE FROM 0.
-
     urlIndex="0"
 
     while read -r line ; do
@@ -487,13 +519,15 @@ Read_Source_Url_List()
             let 'urlIndex = urlIndex + 1'
         fi
 
-    done < "$tempFileNameForSourceUrls"
+    done < "$fileWebSourcesList"
 
     # Set the length of the urlArray array.
     urlArrayLength="$urlIndex"
 
-    # Delete the temp file.
-    if [ -f "$tempFileNameForSourceUrls" ]; then rm "$tempFileNameForSourceUrls"; fi
+    # Delete the temp file if it exists.
+    if [ "$isWebSourcesListUrlOrFile" = "URL" ]; then
+        if [ -f "$tempFileSourceUrls" ]; then rm "$tempFileSourceUrls"; fi
+    fi
 }
 
 
@@ -1057,7 +1091,8 @@ Handle_Get_IP_Mode()
     Read_Source_Url_List
 
     if [ "$verbose" = "TRUE" ]; then
-        printf "%-27s %s\n" "Source Urls Download:" "Succeeded ($urlArrayLength urls)"
+        printf "%-27s %s\n" "Source Urls Location:" "$webSourcesListForDisplay"
+        printf "%-27s %s\n" "Read Source Urls:" "Succeeded ($urlArrayLength urls)"
     fi
 
     # Check if the number of source urls is fewer than the required minimum.
@@ -1208,34 +1243,35 @@ Handle_Test_Url_Mode()
 
     # 'Pretty print' the test results.
 
-    printf "\n%-20s %s\n" "Script Version:" "$version"
-    printf "%-20s %s\n" "Operation Mode:" "Test Url"
-    printf "%-20s %s\n" "Download Utility:" "$urlDownloadProgramForDisplay"
-    printf "%-20s %s\n" "Url:" "$testUrlAddress"
-    printf "%-20s %s\n" "Duration:" "$timeTaken seconds"
+    printf "\n%-22s %s\n" "Script Version:" "$version"
+    printf "%-22s %s\n" "Operation Mode:" "Test Url"
+    printf "%-22s %s\n" "Url:" "$testUrlAddress"
+    printf "%-22s %s\n" "Download Utility:" "$urlDownloadProgramForDisplay"
+    printf "%-22s %s\n" "Timeout  (Seconds):" "$timeout"
+    printf "%-22s %s\n" "Duration (Seconds):" "$timeTaken"
 
     if [ "$getIpFromUrlRetVal" -eq "$GetIpSingleValidIP" ]; then
-        printf "%-20s %s\n" "Outcome:" "Url provided a single IP address - $ipAddress"
-        printf "%-20s %s\n" "Status:" "Success"
-        printf "%-20s %s\n" "Conclusion:" "Url is suitable for using as a source."
+        printf "%-22s %s\n" "Status:" "Success"
+        printf "%-22s %s\n" "Outcome:" "Url provided a single IP address - $ipAddress"
+        printf "%-22s %s\n" "Conclusion:" "Url is suitable for using as a source."
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpMultipleValidIP" ]; then
-        printf "%-20s %s\n" "Outcome:" "Url provided more than one IP address."
+        printf "%-22s %s\n" "Status:" "Failure"
+        printf "%-22s %s\n" "Outcome:" "Url provided more than one IP address."
         ipAddressSSV=$(echo "$ipAddress" | tr '\n' ' ' | sed "s/ /, /g" | sed "s/, $//g")
-        printf "%-20s %s\n" "IP Addresses:" "$ipAddressSSV"
-        printf "%-20s %s\n" "Status:" "Failure"
-        printf "%-20s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
+        printf "%-22s %s\n" "IP Addresses:" "$ipAddressSSV"
+        printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpNoValidIP" ]; then
-        printf "%-20s %s\n" "Outcome:" "Url provided no IP addresses."
-        printf "%-20s %s\n" "Status:" "Failure"
-        printf "%-20s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
+        printf "%-22s %s\n" "Status:" "Failure"
+        printf "%-22s %s\n" "Outcome:" "Url provided no IP addresses."
+        printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
 
     elif [ "$getIpFromUrlRetVal" -eq "$GetIpTimedOut" ]; then
-        printf "%-20s %s\n" "Outcome:" "Server timed out (timeout set at: $timeout seconds)."
-        printf "%-20s %s\n" "Status:" "Failure"
-        printf "%-20s %s\n" "Conclusion:" "Url is NOT suitable for using as a source unless the"
-        printf "%-20s %s\n" "" "timeout was set very low or its timing out is unusual."
+        printf "%-22s %s\n" "Status:" "Failure"
+        printf "%-22s %s\n" "Outcome:" "Server timed out."
+        printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source unless the"
+        printf "%-22s %s\n" "" "timeout was set very low or its timing out is unusual."
     fi
 
     # The exit point of the script in test url mode.
@@ -1253,8 +1289,9 @@ Handle_Check_Mode()
 
     # Read the source urls into $urlArray.
     Read_Source_Url_List
-
-    printf "%-24s %s\n\n" "Source Urls Download:" "Succeeded ($urlArrayLength Urls)"
+    
+    printf "%-24s %s\n" "Source Urls Location:" "$webSourcesListForDisplay"
+    printf "%-24s %s\n\n" "Read Source Urls:" "Succeeded ($urlArrayLength Urls)"
 
     # Table header.
     printf "%s\n" "------------------------------------------------------------------------------"
@@ -1344,7 +1381,7 @@ elif [ "$1" = "--version" -o "$1" = "-version" -o "$1" = "-ver" ]; then
 fi
 
 # Use getopts to process the command line arguments.
-while getopts ":gcu:bvhn:t:d:" option; do
+while getopts ":gcu:bvhn:t:d:s:" option; do
 
     case $option in
 
@@ -1365,15 +1402,6 @@ while getopts ":gcu:bvhn:t:d:" option; do
             operationMode="TESTURL"
             testUrlAddress="$OPTARG"
             let "userSetModesCounter = userSetModesCounter + 1"
-
-            # Check if $testUrlAddress is an url by seeing if the first 4 chars are 'http'.
-            urlFirst4Chars=${testUrlAddress:0:4}
-            urlFirst4CharsLowerCase=$(echo "$urlFirst4Chars" | tr '[:upper:]' '[:lower:]')
-
-            if [ "$urlFirst4CharsLowerCase" != "http" ]; then
-                Output_Error_Message "ArgInvalid" "-u"
-                exit "$ExitStatusErrorUrlArgInvalid"
-            fi
             ;;
 
         b)
@@ -1393,9 +1421,8 @@ while getopts ":gcu:bvhn:t:d:" option; do
             ;;
 
         n)
-            # -n num has been used, set the number of sources to use and flag variable.
+            # -n num has been used, set the number of sources to use.
             numIpToUseForGetIP="$OPTARG"
-            userSetNumIpToUseForGetIP="TRUE"
 
             # Use sed to check that $numIpToUseForGetIP is a single digit >=2 and <=5.
             numMin="2"
@@ -1412,28 +1439,27 @@ while getopts ":gcu:bvhn:t:d:" option; do
             ;;
 
         t)
-            # -t seconds has been used, set the timeout flag and arg variables.
-            timeoutSecondsArg="$OPTARG"
-            userSetTimeout="TRUE"
+            # -t seconds has been used, set the user timeout variable.
+            userSetTimeout="$OPTARG"
 
-            # Check that $timeoutSecondsArg is a number, int or real. This is a Bash hack to use
+            # Check that $userSetTimeout is a number, int or real. This is a Bash hack to use
             # awk to check whether a variable is any kind of number (int or real).
             awkIsNum='{ if ($1 + 0 == $1) print "Num"; else print "NotNum" }'
-            awkIsNumRetVal=$(echo "$timeoutSecondsArg" | awk "$awkIsNum")
+            awkIsNumRetVal=$(echo "$userSetTimeout" | awk "$awkIsNum")
 
             if [ "$awkIsNumRetVal" = "NotNum" ]; then
                 Output_Error_Message "ArgInvalid" "-t"
                 exit "$ExitStatusErrorTimeoutArgInvalid"
             fi
 
-            # Use bc to check that $timeoutSecondsArg is a number in range, >=0.2 and <=30.
+            # Use bc to check that $userSetTimeout is a number in range, >=0.2 and <=30.
             # The awk check has to be done first as bc doesn't like being given a non-number.
 
             timeoutMin="0.2"
             timeoutMax="30"
 
-            bcExpIsNumInRange="if ($timeoutSecondsArg < $timeoutMin || \
-                                   $timeoutSecondsArg > $timeoutMax) 1 else 0"
+            bcExpIsNumInRange="if ($userSetTimeout < $timeoutMin || \
+                                   $userSetTimeout > $timeoutMax) 1 else 0"
             bcExpIsNumInRangeRetVal=$(echo "$bcExpIsNumInRange" | bc -l)
 
             # A positive number in range has not been entered.
@@ -1445,19 +1471,21 @@ while getopts ":gcu:bvhn:t:d:" option; do
 
         d)
             # -d has been used to set the download program, set which program to use.
-
             userSetUrlDownloadProgramLC=$(echo "$OPTARG" | tr '[:upper:]' '[:lower:]')
 
             if [ "$userSetUrlDownloadProgramLC" = "wget" ]; then
                 userSetUrlDownloadProgram="WGET"
-
             elif [ "$userSetUrlDownloadProgramLC" = "curl" ]; then
                 userSetUrlDownloadProgram="CURL"
-
             else
                 Output_Error_Message "ArgInvalid" "-d"
                 exit "$ExitStatusErrorUrlDownloadProgramArgInvalid"
             fi
+            ;;
+
+        s)
+            # -s has been used to set the location of the source urls list.
+            userSetWebSourcesList="$OPTARG"
             ;;
 
         \?)
@@ -1499,15 +1527,15 @@ fi
 # Set the appropriate timeout.
 
 # If the user set the timeout use that otherwise use the default.
-if [ "$userSetTimeout" = "TRUE" ]; then
-    timeout="$timeoutSecondsArg"
+if [ "$userSetTimeout" != "FALSE" ]; then
+    timeout="$userSetTimeout"
 else
     if [ "$operationMode" = "GETIP" ]; then
-        timeout="$timeoutGetIPMode"
+        timeout="$defaultTimeoutGetIPMode"
     elif [ "$operationMode" = "CHECK" ]; then
-        timeout="$timeoutCheckMode"
+        timeout="$defaultTimeoutCheckMode"
     elif [ "$operationMode" = "TESTURL" ]; then
-        timeout="$timeoutTestUrlMode"
+        timeout="$defaultTimeoutTestUrlMode"
     fi
 fi
 
