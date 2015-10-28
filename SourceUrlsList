@@ -2,17 +2,16 @@
 # Source urls list for the getip script. See: https://github.com/mattst/getip
 #
 # The following list of web page urls all provide the IP address of the connecting machine. They
-# each return an IP address either on its own or within some plain text or HTML. Some 'show your
-# IP address' web pages have an example IP address on the page - such web pages should not be
-# added. Note that pages which contain more than 1 unique IP address would be ignored by getip,
-# they would not cause the script to supply the wrong IP address.
+# each return an IP address either on its own or within some plain text or HTML. 
 #
-# Note #1: When adding an url be careful of any trailing '/'s at the end of urls. In a few cases
-# it is essential that they are there or that they are not there, so paste accurately.
+# No web pages should be added to this list without testing it for suitability using getip's
+# test url feature, e.g.  getip -u url
 #
-# Note #2: Single quotes in urls should be replaced with %27.
+# Note: Single quotes in urls should be replaced with %27.
 # e.g. http://www.dnswatch.info/what's-my-ip == http://www.dnswatch.info/what%27s-my-ip
 #
+# Note: Paste accurately the exact tested url, including any trailing slash.
+# 
 
 http://aboutmyip.com/AboutMyXApp/AboutMyIP.jsp
 http://aruljohn.com/
@@ -30,50 +29,41 @@ http://groanmyip.com/
 http://i-dig.info/ip/showip.php
 http://icanhazip.com
 http://ifconfig.co/
-http://ip4.me/
-http://ip.appspot.com
 http://ip-check.info/?lang=en
-http://ipchicken.com
-http://ip.fruktsallad.net
-http://ipinfodb.com/my_ip_location.php
-http://ipinfo.info/html/my_ip_address.php
-http://iplookup.flashfxp.com
 http://ip-lookup.net/
+http://ip.appspot.com
+http://ip.fruktsallad.net
+http://ip4.me/
+http://ipchicken.com
+http://ipinfo.info/html/my_ip_address.php
+http://ipinfodb.com/my_ip_location.php
+http://iplookup.flashfxp.com
 http://mxtoolbox.com/WhatIsMyIP/
 http://my-ip-address.com
+http://myexternalip.com/
+http://myip.cz
 http://myip.dnsomatic.com
 http://myip.nmonitoring.com/
-http://myip.ru/
+http://myip.ru
+http://myiplocation.net/
 http://network-tools.com
 http://networktools.nl
 http://passwordsgenerator.net/WhatIsMyIP/
 http://remote.12dt.com
-https://api.ipify.org?format=json
-https://encodable.com/ip_address/
+http://searchmyip.com
 http://showip.net
-https://ipleak.net/
 http://smart-ip.net/
 http://submit.apnic.net/templates/yourip.html
-https://wtfismyip.com/
-https://www.astrill.com/what-is-my-ip-address.php
-https://www.dur.ac.uk/cis/network/findip/
-https://www.google.com/search?q=Your+public+IP+address&gws_rd=cr
-https://www.icuk.net/contact/ip.asp
-https://www.milonic.com/myipaddress.php
-https://www.name.com/ip
-https://www.overplay.net/vpn/ip-address/what-is-my-ip-address.php
-https://www.privateinternetaccess.com/pages/whats-my-ip/
-https://www.ultratools.com/tools/yourIPResult
-https://www.whatismybrowser.com/detect/what-is-my-ip-address
-https://www.whatsmydns.net/whats-my-ip-address.html
 http://tnx.nl/ip
 http://torvpn.com/myip.html
 http://webtools.csx.cam.ac.uk/myip/results.html
-http://whatismyipaddress.com/ip-lookup
 http://whatismyip.org/
+http://whatismyipaddress.com/ip-lookup
+http://whats-my-ip-address.org
 http://whatsmyuseragent.com/
 http://www.123myip.co.uk
 http://www.bobborst.com/tools/whatsmyip/
+http://www.digmyip.net
 http://www.displaymyip.com
 http://www.dnsstuff.com/
 http://www.dnswatch.info/what%27s-my-ip
@@ -81,22 +71,24 @@ http://www.exadium.com/tools/myip/
 http://www.formyip.com/ipcountry.php
 http://www.geoip.co.uk/
 http://www.geoiptool.com
+http://www.get-ip.me/
 http://www.getip.com
 http://www.howtofindmyipaddress.com
 http://www.infosniper.net/
-http://www.ip2location.com/
 http://www.ip-adress.com/
 http://www.ip-adress.eu/
-http://www.ipadr.xyz/
+http://www.ip-lookup.com
 http://www.ip.cc/index.php
+http://www.ip2location.com/
+http://www.ipadr.xyz/
 http://www.ipgoat.com
 http://www.ipgp.net/
 http://www.ipligence.com/whatsmyip
 http://www.iplocation.net
-http://www.ip-lookup.com
 http://www.ipnow.org
 http://www.ipnumber.eu/ip/
 http://www.iprivacytools.com/my-ip-address/
+http://www.iptect.com
 http://www.iptrackeronline.com
 http://www.lawrencegoetz.com/programs/ipinfo/
 http://www.mediacollege.com/internet/utilities/show-ip.shtml
@@ -106,12 +98,14 @@ http://www.myglobalip.com/
 http://www.myipnumber.com/my-ip-address.asp
 http://www.nirsoft.net/show_my_ip_address.php
 http://www.shmyip.com
+http://www.show-my-ip.de/ipadresse.html
 http://www.showipinfo.net
 http://www.showmemyip.com
-http://www.showmyip.com.ar
 http://www.showmyip.co.uk
-http://www.show-my-ip.de/ipadresse.html
+http://www.showmyip.com.ar
 http://www.showmyip.gr
+http://www.showmyipaddress.eu
+http://www.smartgb.com/free_showip.php
 http://www.spyber.com/ip-lookup.php
 http://www.thinkbroadband.com/ip.html
 http://www.tracemyip.org
@@ -127,5 +121,21 @@ http://www.whereisip.net/
 http://www.who.is
 http://www.whoismyisp.org/
 http://www.yougetsignal.com/what-is-my-ip-address/
+https://api.ipify.org?format=json
+https://encodable.com/ip_address/
+https://ipleak.net/
+https://wtfismyip.com/
+https://www.adminlabs.com/network-tools/show-my-ip
+https://www.astrill.com/what-is-my-ip-address.php
+https://www.dur.ac.uk/cis/network/findip/
+https://www.google.com/search?q=Your+public+IP+address&gws_rd=cr
+https://www.icuk.net/contact/ip.asp
+https://www.milonic.com/myipaddress.php
+https://www.name.com/ip
+https://www.overplay.net/vpn/ip-address/what-is-my-ip-address.php
+https://www.privateinternetaccess.com/pages/whats-my-ip/
+https://www.ultratools.com/tools/yourIPResult
+https://www.whatismybrowser.com/detect/what-is-my-ip-address
+https://www.whatsmydns.net/whats-my-ip-address.html
 
 # End of list.
