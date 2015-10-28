@@ -250,28 +250,28 @@ SERVER_TIMED_OUT="3"
 TEMP_FILE_CREATION_FAILED="4"
 
 # Constants to hold the values returned by the Verify_IP_List() function.
-IP_ADDRESS_VERIFICATION_SUCCESS="0"
-IP_ADDRESS_VERIFICATION_FAILURE="1"
+IP_ADDRESS_LIST_VERIFICATION_SUCCESS="0"
+IP_ADDRESS_LIST_VERIFICATION_FAILURE="1"
 
-# Constants to hold the various exit statuses of the script.
-# Careful using ST's Insert Nums, success must be 0 not 1.
-EXIT_STATUS_SUCCESS="0"
-EXIT_STATUS_ERROR_NUM_SOURCES_ARG_INVALID="100"
-EXIT_STATUS_ERROR_TIMEOUT_ARG_INVALID="110"
-EXIT_STATUS_ERROR_DOWNLOAD_PROGRAM_ARG_INVALID="120"
-EXIT_STATUS_ERROR_OPTION_INVALID="130"
-EXIT_STATUS_ERROR_ARG_MISSING="140"
-EXIT_STATUS_ERROR_USER_SET_MORE_THAN_ONE_MODE="150"
-EXIT_STATUS_ERROR_USER_SET_VERBOSE_AND_BARE="160"
-EXIT_STATUS_ERROR_DOWNLOAD_PROGRAM_NOT_INSTALLED="170"
-EXIT_STATUS_ERROR_READ_WEB_SOURCE_LIST_FAILED="180"
-EXIT_STATUS_ERROR_NOT_ENOUGH_SOURCE_URLS="190"
-EXIT_STATUS_ERROR_TEMP_FILE_CREATION_FAILED="200"
-EXIT_STATUS_ERROR_FAILED_TO_GET_IPADDRESS="210"
-EXIT_STATUS_ERROR_CHECK_MODE_ALL_URLS_FAILED="220"
-EXIT_STATUS_TEST_URL_NO_IP_ADDRESS="230"
-EXIT_STATUS_TEST_URL_MULTIPLE_IP_ADDRESS="240"
-EXIT_STATUS_TEST_URL_TIMED_OUT="250"
+# Constant to hold the successful exit value.
+EXIT_SUCCESS="0"
+
+# Constants to hold the various error exit values, they are also used for error messages.
+EXIT_ERR_ARG_INVALID="100"
+EXIT_ERR_OPTION_INVALID="101"
+EXIT_ERR_ARG_MISSING="102"
+EXIT_ERR_MORE_THAN_ONE_MODE_SET="103"
+EXIT_ERR_VERBOSE_AND_BARE_SET="104"
+EXIT_ERR_TEMP_FILE_CREATION_FAILED="105"
+EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED="106"
+EXIT_ERR_NOT_ENOUGH_SOURCE_URLS="107"
+EXIT_ERR_FAILED_TO_GET_IP_ADDRESS="108"
+EXIT_ERR_WGET_NOT_INSTALLED="109"
+EXIT_ERR_CURL_NOT_INSTALLED="110"
+EXIT_ERR_WGET_AND_CURL_NOT_INSTALLED="111"
+EXIT_ERR_TEST_URL_NO_IP_ADDRESS="112"
+EXIT_ERR_TEST_URL_MULTIPLE_IP_ADDRESS="113"
+EXIT_ERR_TEST_URL_TIMED_OUT="114"
 
 
 #
@@ -288,8 +288,7 @@ Display_Usage_Message()
     local make_temp_file_ret_val=$?
 
     if [ "$make_temp_file_ret_val" -ne "0" ]; then
-        Output_Error_Message "Temp_file_creation_failed"
-        exit "$EXIT_STATUS_ERROR_TEMP_FILE_CREATION_FAILED"
+        Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
     fi
 
 # Output a here document of the getip man page to $getip_man_page_temp_file.
@@ -395,64 +394,73 @@ EOF
 
 
 # Function to send the various error messages to STDERR.
-Output_Error_Message()
+Exit_With_Error_Message()
 {
-    # Assign $err_to_display the value of the 1st function arg (NOT script arg).
-    local err_to_display="$1"
+    # Assign $err_num the value of the 1st function arg (NOT script arg).
+    local err_num="$1"
 
     # Assign $additional_info the value of the 2nd function arg (NOT script arg).
     # Some errors display a configurable piece of information, e.g. an option.
     local additional_info="$2"
 
+    # If bare output is set, just exit with no error message. Not sure about this?!
+    if [ "$bare_output" = "TRUE" ]; then
+        exit "$err_num"
+    fi
+
     # Output the appropriate error message to STDERR.
 
     echo "" >&2
 
-    if [ "$err_to_display" = "Arg_invalid" ]; then
+    if [ "$err_num" = "$EXIT_ERR_ARG_INVALID" ]; then
         echo "The argument given to the $additional_info option is invalid." >&2
 
-    elif [ "$err_to_display" = "Option_invalid" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_OPTION_INVALID" ]; then
         echo "An invalid option has been entered." >&2
 
-    elif [ "$err_to_display" = "Arg_missing" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_ARG_MISSING" ]; then
         echo "The argument is missing for the option: -$additional_info" >&2
 
-    elif [ "$err_to_display" = "User_set_more_than_one_mode" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_MORE_THAN_ONE_MODE_SET" ]; then
         echo "Only one operation mode can be used at a time." >&2
 
-    elif [ "$err_to_display" = "User_set_verbose_and_bare" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_VERBOSE_AND_BARE_SET" ]; then
         echo "Verbose and bare output can not be used at the same time." >&2
 
-    elif [ "$err_to_display" = "Temp_file_creation_failed" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_TEMP_FILE_CREATION_FAILED" ]; then
         echo "Unable to create a temp file using 'mktemp'." >&2
 
-    elif [ "$err_to_display" = "Read_web_source_list_failed" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED" ]; then
         echo "Unable to read the web sources file located at:" >&2
-        echo "$additional_info" >&2
+        echo "$web_sources_list_location_display_text" >&2
 
-    elif [ "$err_to_display" = "Not_enough_source_urls" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_NOT_ENOUGH_SOURCE_URLS" ]; then
         echo "Not enough web sources urls, the minimum required is $web_sources_min." >&2
 
-    elif [ "$err_to_display" = "Failed_to_get_iPAddress" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS" ]; then
         echo "The script failed to get the IP address." >&2
 
-    elif [ "$err_to_display" = "Wget_not_installed" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_WGET_NOT_INSTALLED" ]; then
         echo "The program wget is not installed on your system." >&2
 
-    elif [ "$err_to_display" = "Curl_not_installed" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_CURL_NOT_INSTALLED" ]; then
         echo "The program curl is not installed on your system." >&2
 
-    elif [ "$err_to_display" = "Wget_and_curl_not_installed" ]; then
+    elif [ "$err_num" = "$EXIT_ERR_WGET_AND_CURL_NOT_INSTALLED" ]; then
+        echo "Neither wget nor curl are installed on your system." >&2
+        echo "" >&2
         echo "The getip script requires either 'wget' or 'curl' to access the web, please" >&2
         echo "install one of them in order to use this script. wget and curl are both" >&2
         echo "programs that can retrieve web pages, and they are widely available for all" >&2
         echo "UNIX/Linux based systems. The getip script works equally well with either," >&2
-        echo "but in tests on Debian and Linux Mint wget was consistently slightly faster." >&2
-        echo "If both wget and curl are installed getip will use wget by default." >&2
+        echo "but in tests on Debian and Linux Mint wget was consistently just a little" >&2
+        echo "faster. If both wget and curl are installed getip will use wget by default." >&2
     fi
 
     echo "" >&2
     echo "Use \"getip -h\" for usage and help or \"man getip\" (if installed)." >&2
+
+    exit "$err_num"
 }
 
 
@@ -498,8 +506,7 @@ Read_Source_Url_List()
         local make_temp_file_ret_val=$?
 
         if [ "$make_temp_file_ret_val" -ne "0" ]; then
-            Output_Error_Message "Temp_file_creation_failed"
-            exit "$EXIT_STATUS_ERROR_TEMP_FILE_CREATION_FAILED"
+            Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
         fi
 
         # Use wget to download the web sources list to the temp file.
@@ -507,11 +514,10 @@ Read_Source_Url_List()
 
             wget --quiet --tries=1 --user-agent="$user_agent" --output-document=- \
                                         "$web_sources_list_url" > "$web_sources_temp_file"
-            local wget_download_web_sources_list_ret_val=$?
+            local download_web_sources_list_ret_val=$?
 
-            if [ "$wget_download_web_sources_list_ret_val" -ne "0" ]; then
-                Output_Error_Message "Read_web_source_list_failed" "$web_sources_list_url"
-                exit "$EXIT_STATUS_ERROR_READ_WEB_SOURCE_LIST_FAILED"
+            if [ "$download_web_sources_list_ret_val" -ne "0" ]; then
+                Exit_With_Error_Message "$EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED"
             fi
 
         # Use curl to download the web sources list to the temp file.
@@ -519,11 +525,10 @@ Read_Source_Url_List()
 
             curl --silent --fail --user-agent "$user_agent" "$web_sources_list_url" \
                                                                 > "$web_sources_temp_file"
-            local curl_download_web_sources_list_ret_val=$?
+            local download_web_sources_list_ret_val=$?
 
-            if [ "$curl_download_web_sources_list_ret_val" -ne "0" ]; then
-                Output_Error_Message "Read_web_source_list_failed" "$web_sources_list_url"
-                exit "$EXIT_STATUS_ERROR_READ_WEB_SOURCE_LIST_FAILED"
+            if [ "$download_web_sources_list_ret_val" -ne "0" ]; then
+                Exit_With_Error_Message "$EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED"
             fi
         fi
 
@@ -874,12 +879,12 @@ Verify_IP_List()
 
         # If $ip is not the same as the first IP address in the array.
         if [ "$ip" != "${ip_addresses[0]}" ]; then
-            return "$IP_ADDRESS_VERIFICATION_FAILURE"
+            return "$IP_ADDRESS_LIST_VERIFICATION_FAILURE"
         fi
     done
 
     # All the IP addresses in the array must be the same.
-    return "$IP_ADDRESS_VERIFICATION_SUCCESS"
+    return "$IP_ADDRESS_LIST_VERIFICATION_SUCCESS"
 }
 
 
@@ -1045,6 +1050,13 @@ Display_Stats()
 
     printf "%s\n" "------------------------------------------------------------------------------"
 
+    # Echo a warning if there were no valid IP addresses.
+    if [ "$stats_ip_valid_total" = "0" ]; then
+        printf "\nWARNING: The web sources did not supply any valid IP addresses at all. The\n"
+        printf "most likely cause is that you have lost your internet connection or possibly\n"
+        printf "the web source list file used is extremely out-of-date or corrupted.\n\n"
+    fi
+
     # Echo a warning if the number of unique IP addresses is > 1, and list them.
     if [ "$ip_num_unique" -gt "1" ]; then
         printf "\nWARNING: The number of unique IP addresses retrieved exceeds one, it should be\n"
@@ -1090,8 +1102,7 @@ Handle_Get_IP_Mode()
 
     # Check if the number of source urls is fewer than the required minimum.
     if [ "$web_sources_len" -lt "$web_sources_min" ]; then
-        Output_Error_Message "Not_enough_source_urls"
-        exit "$EXIT_STATUS_ERROR_NOT_ENOUGH_SOURCE_URLS"
+        Exit_With_Error_Message "$EXIT_ERR_NOT_ENOUGH_SOURCE_URLS"
     fi
 
     # Shuffle the web sources array.
@@ -1132,8 +1143,7 @@ Handle_Get_IP_Mode()
 
         # Failed due to a temp file creation error.
         if [ "$get_ip_ret_val" -eq "$TEMP_FILE_CREATION_FAILED" ]; then
-            Output_Error_Message "Temp_file_creation_failed"
-            exit "$EXIT_STATUS_ERROR_TEMP_FILE_CREATION_FAILED"
+            Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
         fi
 
         if [ "$verbose" = "TRUE" ]; then
@@ -1173,13 +1183,13 @@ Handle_Get_IP_Mode()
             if [ "$verbose" = "TRUE" ]; then
                 printf "%-25s %s\n" "Add IP To List:" "$ip_counter of $web_sources_verify_num"
             fi
-        
+
             # Check if all the IP addresses in the array are the same.
             Verify_IP_List "${ip_list[@]}"
             local verify_ip_list_ret_val=$?
 
             # If the IP addresses in the array are NOT all the same then re-start.
-            if [ "$verify_ip_list_ret_val" = "$IP_ADDRESS_VERIFICATION_FAILURE" ]; then
+            if [ "$verify_ip_list_ret_val" = "$IP_ADDRESS_LIST_VERIFICATION_FAILURE" ]; then
 
                 if [ "$verbose" = "TRUE" ]; then
                     printf "\n%-25s %s\n" "IP List Verification:" "Failed [IP addresses differed]"
@@ -1210,7 +1220,7 @@ Handle_Get_IP_Mode()
                 fi
 
                 # The exit point of the script in getip mode.
-                exit "$EXIT_STATUS_SUCCESS"
+                exit "$EXIT_SUCCESS"
             fi
         fi
 
@@ -1218,8 +1228,7 @@ Handle_Get_IP_Mode()
 
     # The exit point of the script in getip mode if the script failed to supply a valid IP address
     # from the required number of sources.
-    Output_Error_Message "Failed_to_get_iPAddress"
-    exit "$EXIT_STATUS_ERROR_FAILED_TO_GET_IPADDRESS"
+    Exit_With_Error_Message "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS"
 }
 
 
@@ -1235,8 +1244,7 @@ Handle_Test_Url_Mode()
 
     # Failed due to temp file creation error.
     if [ "$get_ip_ret_val" -eq "$TEMP_FILE_CREATION_FAILED" ]; then
-        Output_Error_Message "Temp_file_creation_failed"
-        exit "$EXIT_STATUS_ERROR_TEMP_FILE_CREATION_FAILED"
+        Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
     fi
 
     local time_stop=$(date +%s.%N)
@@ -1256,26 +1264,26 @@ Handle_Test_Url_Mode()
         printf "%-22s %s\n" "IP Address:" "$ip_address"
         printf "%-22s %s\n" "Conclusion:" "Url is suitable for using as a source."
         printf "%-22s %s\n" "" "[As long as the IP address is correct.]"
-        exit "$EXIT_STATUS_SUCCESS"
+        exit "$EXIT_SUCCESS"
 
     elif [ "$get_ip_ret_val" -eq "$MULTIPLE_VALID_IP" ]; then
         printf "%-22s %s\n" "Status:" "Failure: More than one IP address"
         # Create neat text for displaying the list of IP addresses.
-        local ip_address_ssv=$(echo "$ip_address" | tr '\n' ' ' | sed "s/ /, /g" | sed "s/, $//g")      
+        local ip_address_ssv=$(echo "$ip_address" | tr '\n' ' ' | sed "s/ /, /g" | sed "s/, $//g")
         printf "%-22s %s\n" "IP Addresses:" "$ip_address_ssv"
         printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
-        exit "$EXIT_STATUS_TEST_URL_MULTIPLE_IP_ADDRESS"
+        exit "$EXIT_ERR_TEST_URL_MULTIPLE_IP_ADDRESS"
 
     elif [ "$get_ip_ret_val" -eq "$NO_VALID_IP" ]; then
         printf "%-22s %s\n" "Status:" "Failure: No IP address"
         printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
-        exit "$EXIT_STATUS_TEST_URL_NO_IP_ADDRESS"
+        exit "$EXIT_ERR_TEST_URL_NO_IP_ADDRESS"
 
     elif [ "$get_ip_ret_val" -eq "$SERVER_TIMED_OUT" ]; then
         printf "%-22s %s\n" "Status:" "Failure: Server timed out"
         printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source unless the"
         printf "%-22s %s\n" "" "timeout was set very low or its timing out was unusual."
-        exit "$EXIT_STATUS_TEST_URL_TIMED_OUT"
+        exit "$EXIT_ERR_TEST_URL_TIMED_OUT"
     fi
 }
 
@@ -1290,11 +1298,6 @@ Handle_Check_Mode()
 
     # Read the web sources list into $web_sources.
     Read_Source_Url_List
-    
-    web_sources[1]="https://crius.feralhosting.com/gencon/fakeip1.html"
-    web_sources[5]="https://crius.feralhosting.com/gencon/fakeip2.html"
-    web_sources[9]="https://crius.feralhosting.com/gencon/fakeip3.html"
-    web_sources[12]="https://crius.feralhosting.com/gencon/fakeip4.html"
 
     printf "%-24s %s\n" "Web Sources Location:" "$web_sources_list_location_display_text"
     printf "%-24s %s\n\n" "Load Web Sources:" "Succeeded ($web_sources_len Urls)"
@@ -1318,8 +1321,7 @@ Handle_Check_Mode()
 
         # Failed due to temp file creation error.
         if [ "$get_ip_ret_val" -eq "$TEMP_FILE_CREATION_FAILED" ]; then
-            Output_Error_Message "Temp_file_creation_failed"
-            exit "$EXIT_STATUS_ERROR_TEMP_FILE_CREATION_FAILED"
+            Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
         fi
 
         # Calculate the time taken (reduce to 3 decimal places).
@@ -1363,7 +1365,7 @@ Handle_Check_Mode()
     Display_Stats
 
     # The exit point of the script in check mode.
-    exit "$EXIT_STATUS_SUCCESS"
+    exit "$EXIT_SUCCESS"
 }
 
 
@@ -1377,12 +1379,12 @@ Handle_Check_Mode()
 # Check if the first arg is "--help", if so display help and exit (-h is handled by getopts).
 if [ "$1" = "--help" -o "$1" = "-?" ]; then
     Display_Usage_Message
-    exit "$EXIT_STATUS_SUCCESS"
+    exit "$EXIT_SUCCESS"
 
 # Check if the first arg is "--version", etc., if so display version number and exit.
 elif [ "$1" = "--version" -o "$1" = "-version" -o "$1" = "-ver" ]; then
     echo "getip v. $version"
-    exit "$EXIT_STATUS_SUCCESS"
+    exit "$EXIT_SUCCESS"
 fi
 
 # Holds how many modes the user set on the command line. Only 1 mode can be used at a time.
@@ -1425,7 +1427,7 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
         h)
             # -h has been used, display help and then exit.
             Display_Usage_Message
-            exit "$EXIT_STATUS_SUCCESS"
+            exit "$EXIT_SUCCESS"
             ;;
 
         n)
@@ -1441,8 +1443,7 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
 
             # A single digit in range has not been entered.
             if [ "$is_num_in_range" != "SINGLE_DIGIT_IN_RANGE" ]; then
-                Output_Error_Message "Arg_invalid" "-n"
-                exit "$EXIT_STATUS_ERROR_NUM_SOURCES_ARG_INVALID"
+                Exit_With_Error_Message "$EXIT_ERR_ARG_INVALID" "-n"
             fi
             ;;
 
@@ -1456,8 +1457,7 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
             awk_is_num_ret_val=$(echo "$timeout_user_set" | awk "$awk_is_num")
 
             if [ "$awk_is_num_ret_val" = "Not_num" ]; then
-                Output_Error_Message "Arg_invalid" "-t"
-                exit "$EXIT_STATUS_ERROR_TIMEOUT_ARG_INVALID"
+                Exit_With_Error_Message "$EXIT_ERR_ARG_INVALID" "-t"
             fi
 
             # Use bc to check that $timeout_user_set is a number in range, >=0.2 and <=30.
@@ -1472,8 +1472,7 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
 
             # A positive number in range has not been entered.
             if [ "$bc_exp_is_num_in_range_ret_val" = "1" ]; then
-                Output_Error_Message "Arg_invalid" "-t"
-                exit "$EXIT_STATUS_ERROR_TIMEOUT_ARG_INVALID"
+                Exit_With_Error_Message "$EXIT_ERR_ARG_INVALID" "-t"
             fi
             ;;
 
@@ -1488,8 +1487,7 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
                 download_program_user_set="$DOWNLOAD_PROGRAM_CURL"
 
             else
-                Output_Error_Message "Arg_invalid" "-d"
-                exit "$EXIT_STATUS_ERROR_DOWNLOAD_PROGRAM_ARG_INVALID"
+                Exit_With_Error_Message "$EXIT_ERR_ARG_INVALID" "-d"
             fi
             ;;
 
@@ -1501,14 +1499,12 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
         \?)
             # User entered an invalid option, e.g. '-x'. Note: Invalid args with no '-' prefix,
             # are handled immediately after this while loop.
-            Output_Error_Message "Option_invalid"
-            exit "$EXIT_STATUS_ERROR_OPTION_INVALID"
+            Exit_With_Error_Message "$EXIT_ERR_OPTION_INVALID"
             ;;
 
         :)
             # User omitted the required additional arg of an option (e.g. -t <BLANK>).
-            Output_Error_Message "Arg_missing" "$OPTARG"
-            exit "$EXIT_STATUS_ERROR_ARG_MISSING"
+            Exit_With_Error_Message "$EXIT_ERR_ARG_MISSING" "$OPTARG"
             ;;
     esac
 done
@@ -1524,14 +1520,12 @@ shift "$num_args_processed_by_getopts"
 num_args_remaining="$#"
 
 if [ "$num_args_remaining" -gt "0" ]; then
-    Output_Error_Message "Option_invalid"
-    exit "$EXIT_STATUS_ERROR_OPTION_INVALID"
+    Exit_With_Error_Message "$EXIT_ERR_OPTION_INVALID"
 fi
 
 # If the user set more than 1 mode on the command line, display error and exit.
 if [ "$modes_used_counter" -gt "1" ]; then
-    Output_Error_Message "User_set_more_than_one_mode"
-    exit "$EXIT_STATUS_ERROR_USER_SET_MORE_THAN_ONE_MODE"
+    Exit_With_Error_Message "$EXIT_ERR_MORE_THAN_ONE_MODE_SET"
 fi
 
 # Set the appropriate timeout.
@@ -1553,8 +1547,7 @@ fi
 
 # If the user has set both verbose and bare output, display error and exit.
 if [ "$verbose" = "TRUE" -a "$bare_output" = "TRUE" ]; then
-    Output_Error_Message "User_set_verbose_and_bare"
-    exit "$EXIT_STATUS_ERROR_USER_SET_VERBOSE_AND_BARE"
+    Exit_With_Error_Message "$EXIT_ERR_VERBOSE_AND_BARE_SET"
 fi
 
 # Determine whether to use wget or curl as the download program.
@@ -1565,7 +1558,6 @@ is_wget_installed=$?
 
 hash curl > /dev/null 2>&1
 is_curl_installed=$?
-
 
 # If the user has not set which one to use on the command line.
 if [ "$download_program_user_set" = "FALSE" ]; then
@@ -1584,8 +1576,7 @@ if [ "$download_program_user_set" = "FALSE" ]; then
 
     # If neither wget nor curl are installed, display error and exit.
     else
-        Output_Error_Message "Wget_and_curl_not_installed"
-        exit "$EXIT_STATUS_ERROR_DOWNLOAD_PROGRAM_NOT_INSTALLED"
+        Exit_With_Error_Message "$EXIT_ERR_WGET_AND_CURL_NOT_INSTALLED"
     fi
 
 # If the user has set which one to use on the command line.
@@ -1597,8 +1588,7 @@ else
         if [ "$is_wget_installed" -eq "0" ]; then
             download_program="$DOWNLOAD_PROGRAM_WGET"
         else
-            Output_Error_Message "Wget_not_installed"
-            exit "$EXIT_STATUS_ERROR_DOWNLOAD_PROGRAM_NOT_INSTALLED"
+            Exit_With_Error_Message "$EXIT_ERR_WGET_NOT_INSTALLED"
         fi
 
     # If the user set curl, use that if it is installed.
@@ -1607,8 +1597,7 @@ else
         if [ "$is_curl_installed" -eq "0" ]; then
             download_program="$DOWNLOAD_PROGRAM_CURL"
         else
-            Output_Error_Message "Curl_not_installed"
-            exit "$EXIT_STATUS_ERROR_DOWNLOAD_PROGRAM_NOT_INSTALLED"
+            Exit_With_Error_Message "$EXIT_ERR_CURL_NOT_INSTALLED"
         fi
     fi
 fi
