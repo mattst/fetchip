@@ -106,7 +106,7 @@
 #
 #
 # TIMEOUT, FOR EACH SOURCE   - Command line switch: -t seconds
-#                            - Range >=0.2 and <=30. [Real numbers are permitted.]
+#                            - Range >=0.2 and <=15. [Real numbers are permitted.]
 #                            - Default timeout in multi mode:    1.0
 #                            - Default timeout in fast mode:     0.75
 #                            - Default timeout in check mode:    10.0
@@ -115,7 +115,7 @@
 # Sets the timeout in seconds for each source, not an overall timeout for the script. When a source
 # gives no response or is slow to respond, getip simply moves on to the next source in the sources
 # list. Each of the operation modes has its own default timeout (shown above). The allowed range is
-# large, >=0.2 and <=30, as large variations in speed of web access and the user's physical location
+# large, >=0.2 and <=15, as large variations in speed of web access and the user's physical location
 # both mean a flexible timeout is sensible, however values less than 0.75 or greater than 3 are not
 # usually advisable in multi or fast mode. In check and test url modes a high timeout facilitates
 # checking whether sources are functioning at all or not.
@@ -350,7 +350,7 @@ Sets the Number of sources to use in multi mode. The allowed range of values is 
 
 .TP
 \f_b\-t\f_r \f_bnum_seconds\f_r
-Sets the Timeout for each source. This is not an overall timeout for the script. When a source gives no response or is slow to respond, getip moves on to the next source and this is the timeout in seconds for each one. Note: Real numbers are permitted, e.g. 0.75, 1.5, .85, etc. The allowed range of values is >=0.2 and <=30 (but these extremes are overkill).
+Sets the Timeout for each source. This is not an overall timeout for the script. When a source gives no response or is slow to respond, getip moves on to the next source and this is the timeout in seconds for each one. Note: Real numbers are permitted, e.g. 0.75, 1.5, .85, etc. The allowed range of values is >=0.2 and <=15 (but these extremes are overkill).
 
 The default timeouts are dependant on mode, in seconds they are; multi mode 1, fast mode 0.75, check mode 10, test url mode 10.
 
@@ -567,8 +567,8 @@ Read_Source_Url_List()
 # Function that randomizes the $web_sources array. Since this script is being publicly released it
 # is sensible to randomize the sources so as not to place undue pressure on the servers at the top
 # of the list. This is an implementation of the Knuth shuffle algorithm (aka Fisher-Yates shuffle),
-# which is a very efficient randomizer, needing just one pass through an array. IMPORTANT: THE
-# $web_sources ARRAY MUST BE INDEXED IN NUMERICAL SEQUENCE FROM 0 FOR THIS FUNCTION.
+# which is a very efficient randomizer, needing just one pass through an array. 
+# IMPORTANT: THE $web_sources ARRAY MUST BE INDEXED FROM 0 FOR THIS FUNCTION.
 Randomize_Url_List()
 {
     # Bash $RANDOM provides a random number in the range 0..32767 so 32768 possible values.
@@ -962,7 +962,7 @@ Find_Mean_Average_Time()
 # Function to calculate the median of the $stats_ip_retrieval_times_list (check mode only).
 Find_Median_Average_Time()
 {
-    # Establish if there are an even or odd number of items stored in $stats_ip_retrieval_times_list.
+    # Establish if there are an even or odd number of items.
     local num_items_parity
     let 'num_items_parity = stats_ip_valid_total % 2'
 
@@ -1215,7 +1215,9 @@ Handle_Get_IP_Mode()
                     if [ "$bare_output" = "TRUE" ]; then
                         printf "%s\n" "$ip_address"
                     else
-                        printf "%s\n" "IPv4 address: $ip_address"
+                        # Output Example: "IPv4 address: 11.22.33.44 (2 web sources used)"
+                        printf "%s%s\n" "IPv4 address: $ip_address " \
+                                        "($web_sources_verify_num web sources used)"
                     fi
                 fi
 
@@ -1460,11 +1462,11 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
                 Exit_With_Error_Message "$EXIT_ERR_ARG_INVALID" "-t"
             fi
 
-            # Use bc to check that $timeout_user_set is a number in range, >=0.2 and <=30.
+            # Use bc to check that $timeout_user_set is a number in range, >=0.2 and <=15.
             # The awk check has to be done first as bc doesn't like being given a non-number.
 
             timeout_min="0.2"
-            timeout_max="30"
+            timeout_max="15"
 
             bc_exp_is_num_in_range="if ($timeout_user_set < $timeout_min || \
                                         $timeout_user_set > $timeout_max) 1 else 0"
