@@ -1,11 +1,11 @@
 .\" Manpage for getip.
 
 
-.TH GETIP 1 "29 Oct 2015" "1.0" "GETIP VERSION 1.0"
+.TH GETIP 1 "30 Oct 2015" "1.0" "GETIP VERSION 1.0"
 
 .SH NAME
 
-getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address.
+getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
 
 .SH SYNOPSIS
 
@@ -16,25 +16,27 @@ In typical usage no options are necessary.
 
 .SH DESCRIPTION
 
-\fBgetip\fR is a script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBstdout\fR).
+\fBgetip\fR is a script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBstdout\fR). \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve web sources. See: \fBREQUIREMENTS\fR
 
 From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the web page, or an IP-address-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot these so they can be ignored). In such cases, or in other similar ones, an IP address fetching script could provide an incorrect IP address.
 
 To prevent an incorrect IP address being provided \fBgetip\fR always retrieves the IP address from multiple sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBgetip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source is not an unreasonable guesstimate.
 
-\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page, each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the file each time the script is run so that users always have the most up-to-date list of web sources. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The http urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. See the description of the \fB-u\fR option, if you wish to create a custom web sources list file.
+\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The http urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
 
-The exact number of urls in the current web sources list file can be checked using the \fB-v\fR (verbose) option. New users may wish to use the verbose option to see what the script is doing while it runs and gain confidence in its reliability.
+The \fB-s\fR option can also be used to specify a copy of the web sources list file which you have downloaded and saved locally but then the most up-to-date list will not be used each time the script is run, and the quality of the list will degrade over time.
 
-\fBgetip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which accurately honour their timeout options nor can either accept timeouts in the fractions of a second. Since \fBgetip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBgetip\fR simply moves on to the next one. In Get IP mode the default timeout for each web source is 1.5 seconds, a sensible range would be 0.75 to 3 seconds but tweaking the timeout for the speed of your internet connection responsiveness can result in improved performance on average. Note that there is no overall timeout for the script.
+\fBgetip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which accurately honour their timeout options nor can either accept timeouts in the fractions of a second. Since \fBgetip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBgetip\fR simply moves on to the next one. In Get IP mode the default timeout for each web source is 1.5 seconds. If modifying this a sensible range would be 0.75 to 3 seconds but tweaking the timeout for the speed of your internet connection's responsiveness can result in improved performance (on average). Note that there is no overall timeout for the script.
 
-The list of web sources is randomized every time the script is run. This is so that undue pressure is not placed on servers near the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
+New users are advised to try the \fB-v\fR verbose option to see the current settings, the number of urls in the web sources list, etc., and (more importantly) to see a comprehensive representation what the script is doing while it runs. This will help new users gain confidence in \fBgetip's\fR reliability; run it with a low timeout to see it trying lots of web sources, e.g. \fB-v\fR \fB-t\fR \fB0.25\fR.
+
+The web sources list is randomized every time the script is run. This is so that undue pressure is not placed on servers at the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
 
 The \fBgetip\fR script retrieves \fBIPv4\fR addresses only and not \fBIPv6\fR addresses.
 
 .SH REQUIREMENTS
 
-\fBgetip\fR is a \fBBASH\fR script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern \fBUNIX\fR like systems come with \fBwget\fR pre-installed. \fBwget\fR and \fBcurl\fR are both command line programs which can download web pages from the internet. \fBgetip\fR works very well with them both but, in tests on \fBDebian\fR and \fBLinux\fR \fBMint\fR, \fBwget\fR was consistently just a little faster (approx. 200 milliseconds with the default options). If both \fBwget\fR and \fBcurl\fR are installed \fBgetip\fR will use \fBwget\fR by default.
+\fBgetip\fR is a \fBBASH\fR script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern \fBUNIX\fR like systems come with \fBwget\fR pre-installed. \fBwget\fR and \fBcurl\fR are both command line programs which can download web pages from the internet. \fBgetip\fR works very well with them both but, in lots of tests on \fBDebian\fR and \fBLinux\fR \fBMint\fR, \fBwget\fR was consistently just a little faster (approx. 200 milliseconds with the default options and using the same web sources). If both \fBwget\fR and \fBcurl\fR are installed \fBgetip\fR will use \fBwget\fR by default.
 
 .SH OPTIONS
 .BR
@@ -43,7 +45,7 @@ In typical usage no options are necessary.
 
 .TP
 \fB\-g\fR
-Get IP mode (default); fetch the IP address from multiple sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-g\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
+Get IP mode (default); retrieve the IP address from multiple web sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-g\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
 
 .TP
 \fB\-c\fR
@@ -54,12 +56,12 @@ Check mode; displays a table containing the url of each web source in the list, 
 Test Url mode; tests an url for possible inclusion in the web sources list. It will display a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. This option is not needed by the average user.
 
 .TP
-\fB\-n\fR \fBnum_sources\fR
+\fB\-n\fR \fBnum_web_sources\fR
 Sets the Number of web sources to use for IP address verification in Get IP mode; the allowed range of values is >=2 and <=5. The default value is 2. See: \fBDESCRIPTION\fR
 
 .TP
 \fB\-t\fR \fBnum_seconds\fR
-Sets the Timeout for each web source; when a web source gives no response or is slow to respond \fBgetip\fR moves on to the next source, \fB\-t\fR sets the timeout in seconds for how long to give each source to respond, real numbers are permitted. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB2\fR. The allowed range of seconds is >=0.2 and <=15 but these are extremes. See: \fBDESCRIPTION\fR
+Sets the Timeout for each web source; when a web source gives no response or is slow to respond \fBgetip\fR moves on to the next source. \fB\-t\fR sets the timeout in seconds for how long to give each source to complete. Real numbers are permitted. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB2\fR. The allowed range of seconds is >=0.2 and <=15 but these are extremes. See: \fBDESCRIPTION\fR
 
 The default timeouts are dependant on mode, they are;
 .br
@@ -69,7 +71,7 @@ Check mode     -  10 seconds
 .br
 Test Url mode  -  10 seconds
 
-The Check and Test Url mode timeouts are intentionally high. They are intended to give servers a good chance to succeed, in case a server is slower than usual to respond. Any server which is consistantly slower than 5 seconds will be removed from the web sources list file.
+The Check and Test Url mode timeouts are intentionally high. They are intended to give servers a good chance to succeed, in case a server is slower than usual to respond. Any server which is consistently slow will be removed from the web sources list file.
 
 .TP
 \fB\-d\fR \fBdownload_program\fR \fB[wget | curl]\fR
@@ -77,11 +79,11 @@ Sets the Download program; \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR t
 
 .TP
 \fB\-s\fR \fBweb_sources_list\fR
-Sets the web Sources list file; \fBgetip\fR can use a custom web Sources list file, either a local file path or http url of the file. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
+Sets the web Sources list file; \fBgetip\fR can use a custom web sources list file or a local copy. Either a file path or http url to the file may be used. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
 
 .TP
 \fB\-b\fR
-Bare output; prints only the IP address and not the "IPv4 address:" prefix. Warning with this option error messages are not displayed. The option exists primarily so that \fBgetip\fR can be used very easily from within other scripts which should check the exit status value of \fBgetip\fR.
+Bare output; prints only the IP address. Warning with this option error messages are not displayed. The option exists primarily so that \fBgetip\fR can be used very easily from within other scripts which should check the exit status value of \fBgetip\fR.
 
 .TP
 \fB\-v\fR
