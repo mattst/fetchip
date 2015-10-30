@@ -1215,9 +1215,8 @@ Handle_Get_IP_Mode()
                     if [ "$bare_output" = "TRUE" ]; then
                         printf "%s\n" "$ip_address"
                     else
-                        # Output Example: "IPv4 address: 11.22.33.44 (2 web sources used)"
-                        printf "%s%s\n" "IPv4 address: $ip_address " \
-                                        "($web_sources_verify_num web sources used)"
+                        printf "%s\n" "IPv4 address: $ip_address"
+                        printf "%s\n" "[Verified using $web_sources_verify_num web sources.]"
                     fi
                 fi
 
