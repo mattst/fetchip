@@ -1,10 +1,10 @@
 #
 # Source urls list for the getip script. See: https://github.com/mattst/getip
 #
-# The following list of web page urls all provide the IP address of the connecting machine. They
-# each return an IP address either on its own or within some plain text or HTML. 
+# The following list of web page urls all provide the IP address of the connecting machine.
+# They each return the IP address either on its own or within some plain text or HTML. 
 #
-# No web pages should be added to this list without testing it for suitability using getip's
+# No web pages should be added to this list without testing for suitability using getip's
 # test url feature, e.g.  getip -u url
 #
 # Note: Single quotes in urls should be replaced with %27.
@@ -30,6 +30,7 @@ http://i-dig.info/ip/showip.php
 http://icanhazip.com
 http://ifconfig.co/
 http://ip-check.info/?lang=en
+http://ip-fetch.com/
 http://ip-lookup.net/
 http://ip.appspot.com
 http://ip.fruktsallad.net
