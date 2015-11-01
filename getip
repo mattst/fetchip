@@ -160,7 +160,7 @@
 
 
 # Holds the script version number.
-version="0.9.1"
+version="1.0.1"
 
 
 # Constants to hold the 3 operation modes.
@@ -279,8 +279,41 @@ EXIT_ERR_TEST_URL_TIMED_OUT="114"
 #
 
 
-# Function to display help.
-Display_Usage_Message()
+# Function to display the help summary (cheat sheet). [-h]
+Display_Help_Summary()
+{
+cat <<EOF
+getip v. $version - Bash script usage and help summary (cheat sheet).
+
+Display the full manual using --help, an inbuilt man page will be displayed.
+
+getip is a script used to get the WAN IPv4 address (aka external/public IP).
+The IP address will be retrieved from multiple web sources and verified.
+
+getip [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-s sources_list]
+cont.           [-d download_program] [-v | -b] [-h] [--help]
+
+In typical usage no options are necessary.
+
+-g      Retrieve the IP address from multiple sources and verify it. (Default)
+-c      Diagnostic information about each source. Used for list maintenance.
+-u url  Tests an url for use as a source. Used for list maintenance.
+-n num  Set the num sources used to verify IP address. (Default: 2; >=2 <=5)
+-t secs Set the timeout for each web source. (Default 1.5 secs; >=0.2 <=15)
+-v      Verbose; display detailed information while getip runs.
+-b      Bare; display only the IP address. Warning: no error messages.
+-h      Help; display this usage and help summary (cheat sheet).
+--help  Help; display the full manual in the form of an inbuilt man page.
+--version  Version; display the version number.
+-s file    Set a custom web sources list file; local file path or http url.
+-d prog    Set the program to download each source. Use: 'wget' or 'curl'.
+           (Default: Uses wget unless only curl is installed. wget is faster.)
+EOF
+}
+
+
+# Function to display the manual in the form of an inbuilt man page. [--help]
+Display_Help_Man_Page()
 {
     # Create a temp file to store the man page here document.
     local getip_man_page_temp_file
@@ -294,34 +327,44 @@ Display_Usage_Message()
 # Output a here document of the getip man page to $getip_man_page_temp_file.
 # Here documents don't work well with indentation, keep to the hard left.
 cat >>$getip_man_page_temp_file <<EOF
+.\" Manpage for getip.
 
-.TH GETIP 1 "29 Sep 2015" "1.0" "GETIP VERSION 1.0"
+.TH GETIP 1 "01 Nov 2015" "1.0.1" "GETIP VERSION 1.0.1"
 
 .SH NAME
 
-getip \- retrieves the WAN IP address
+getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
 
 .SH SYNOPSIS
 
-getip [-m | -f | -c | -u url] [-n num_sources] [-t timeout_secs] [-v] [-h]
+\fBgetip\fR [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-s sources_list] [-d download_program] [-v | -b] [-h]
 
-.SH REQUIREMENTS
+In typical usage no options are necessary.
 
-The BASH shell and either wget or curl must be installed. Most modern UNIX like systems come with BASH and wget pre-installed. wget and curl are both programs which download pages from the web. getip works equally well with them both. wget is used by default if both are installed on the system.
 
 .SH DESCRIPTION
 
-getip is a BASH script used to retrieve the WAN IP address from behind a router using web sites (sources) which provide the IP address in plain text or HTML.
+\fBgetip\fR is a \fBBASH\fR script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBstdout\fR). \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
 
-From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the page, or an IP-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot version numbers so they can be ignored). In such cases an IP address fetching script could provide a user with an incorrect IP address. getip uses multi mode by default to prevent this from happening.
+From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the web page, or an IP-address-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot these so they can be ignored). In such cases, or in other similar ones, an IP address fetching script could provide an incorrect IP address.
 
-In multi mode the IP address is retrieved from multiple sources (default: 2) and compared, so that the correct IP address can be provided. Users are advised to use multi mode in preference to fast mode.
+To prevent an incorrect IP address being provided \fBgetip\fR always retrieves the IP address from multiple sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBgetip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
 
-The getip script retrieves IPv4 addresses only and not IPv6 addresses.
+\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
 
-This script currently contains over 100 web sources.
+The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally but clearly the most up-to-date list will not be used each time the script is run, and the quality of the list will degrade over time.
 
-The list of web sources is randomized every time the script is run. This is so that undue pressure is not placed on servers near the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
+The web sources list is randomized every time the script is run. This is so that undue pressure is not placed on servers at the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
+
+\fBgetip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which accurately honour their timeout options nor can either accept timeouts in the fractions of a second. Since \fBgetip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBgetip\fR simply moves on to the next one. In Get IP mode the default timeout for each web source is 1.5 seconds. If modifying this a sensible range would be 0.75 to 3 seconds but tweaking the timeout for your internet connection's latency (speed of response) can result in improved performance (on average).
+
+New users are advised to try the \fB-v\fR verbose option to see the current settings, the number of urls in the web sources list, etc., and (more importantly) to see a comprehensive representation what the script is doing while it runs. This will help new users gain confidence in \fBgetip's\fR reliability. Running it repeatedly with different timeout values can help users fine tune the best timeout for them to use. e.g. \fB-v\fR \fB-t\fR \fB0.75\fR ... \fB-v\fR \fB-t\fR \fB3\fR. Once a value has been decided on an alias can be created which uses that timeout so it is always used, more advanced users can change the value of the variable 'timeout_get_ip_mode_default' in the script itself if they prefer.
+
+The \fBgetip\fR script retrieves \fBIPv4\fR addresses only and not \fBIPv6\fR addresses.
+
+.SH REQUIREMENTS
+
+\fBgetip\fR is a \fBBASH\fR script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern \fBUNIX\fR like systems come with \fBwget\fR pre-installed. \fBwget\fR and \fBcurl\fR are both command line programs which can download web pages from the internet. \fBgetip\fR works very well with them both but, in lots of tests on \fBDebian\fR and \fBLinux\fR \fBMint\fR, \fBwget\fR was consistently just a little faster (approx. 200 milliseconds with the default options and using the same web sources). If both \fBwget\fR and \fBcurl\fR are installed \fBgetip\fR will use \fBwget\fR by default, if only one of them is installed then that one will be automatically used.
 
 .SH OPTIONS
 .BR
@@ -329,60 +372,115 @@ In typical usage no options are necessary.
 .BR
 
 .TP
-\f_b\-m\f_r
-Multi mode (default); fetch the IP address from multiple sources and check that they are all the same. In multi mode the default number of sources to use is 2. This is the default mode so \f_b\-m\f_r is optional. See: \f_b\-n\f_r \f_bnum_sources\f_r
+\fB\-g\fR
+Get IP mode (default); retrieve the IP address from multiple web sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-g\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
 
 .TP
-\f_b\-f\f_r
-Fast mode; fetch the IP address from just one source in order to retrieve it more quickly than in multi mode. Fast mode is not guaranteed to be faster than multi mode but on average it will be slightly faster. It is advisable that users only use fast mode to confirm their IP address when it is already known, e.g. checking a VPN connection. In some circumstances an incorrect IP address can be returned in fast mode, see \f_bDescription\f_r section above.
+\fB\-c\fR
+Check mode; displays a table containing the url of each web source in the list, the IP address that it returned or a failure message, and the time taken to retrieve the IP address. Various statistics and, if necessary, warnings will be displayed on completion. This option is used to test all the urls in the web sources list during list maintenance and is not needed by the average user.
 
 .TP
-\f_b\-c\f_r
-Check mode; displays a table containing the url of each source, the IP address that it returned (or a failure message), the time taken to retrieve the IP address, and various statistics. Used to test the sources list.
+\fB\-u\fR \fBurl\fR
+Test Url mode; tests an url for possible inclusion in the web sources list. It will display a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. This option is not needed by the average user.
 
 .TP
-\f_b\-u\f_r \f_burl\f_r
-Test Url mode; tests an url for inclusion in the sources list. It will display whether the url returned a single IP address (which is required for inclusion in the sources list), multiple IP addresses, or no IP addresses at all. To aid debugging it will list all IP addresses returned.
+\fB\-n\fR \fBnum_web_sources\fR
+Sets the Number of web sources to use for IP address verification in Get IP mode; the allowed range of values is >=2 and <=5. The default value is 2. See: \fBDESCRIPTION\fR
 
 .TP
-\f_b\-n\f_r \f_bnum_sources\f_r
-Sets the Number of sources to use in multi mode. The allowed range of values is >=2 and <=5. The default value is 2.
+\fB\-t\fR \fBnum_seconds\fR
+Sets the Timeout for each web source; when a web source gives no response or is slow to respond \fBgetip\fR moves on to the next source. \fB\-t\fR sets the timeout in seconds for how long to give each source to complete. Real numbers are permitted. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB2\fR. The allowed range of seconds is >=0.2 and <=15 but these are extremes. See: \fBDESCRIPTION\fR
+
+The default timeouts are dependant on mode, they are;
+.br
+Get IP mode    -  1.5 seconds
+.br
+Check mode     -  10 seconds
+.br
+Test Url mode  -  10 seconds
+
+The Check and Test Url mode timeouts are intentionally high. They are intended to give servers a good chance to succeed, in case a server is slower than usual to respond. Any server which is consistently slow will be removed from the web sources list file.
 
 .TP
-\f_b\-t\f_r \f_bnum_seconds\f_r
-Sets the Timeout for each source. This is not an overall timeout for the script. When a source gives no response or is slow to respond, getip moves on to the next source and this is the timeout in seconds for each one. Note: Real numbers are permitted, e.g. 0.75, 1.5, .85, etc. The allowed range of values is >=0.2 and <=15 (but these extremes are overkill).
-
-The default timeouts are dependant on mode, in seconds they are; multi mode 1, fast mode 0.75, check mode 10, test url mode 10.
+\fB\-d\fR \fBdownload_program\fR \fB[wget | curl]\fR
+Sets the Download program; \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR to download each web source and the web sources list file. Use either: \fB-d\fR \fBwget\fR or \fB-d\fR \fBcurl\fR. \fBwget\fR is slightly quicker on tested systems and so is used by default if both programs are installed. Note that if only \fBcurl\fR is installed then that will be used by default. See: \fBREQUIREMENTS\fR
 
 .TP
-\f_b\-b\f_r
-Bare output; display only the IP address and not the "IPv4 address:" prefix.
+\fB\-s\fR \fBweb_sources_list\fR
+Sets the web Sources list file; \fBgetip\fR can use a custom web sources list file or a local copy. Either a file path or http url to the file may be used. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
 
 .TP
-\f_b\-v\f_r
-Verbose; display detailed information while the script runs.
+\fB\-b\fR
+Bare output; prints only the IP address. Warning: with this option error messages are not displayed. The option exists primarily so that \fBgetip\fR can be used very easily from within other scripts which should check the exit status value of \fBgetip\fR.
 
 .TP
-\f_b\-h\f_r, \f_b\-\-help\f_r
-Help; display usage and help.
+\fB\-v\fR
+Verbose; display detailed information while \fBgetip\fR runs.
 
 .TP
-\f_b\-\-version\f_r
-Display version number.
+\fB\-h\fR
+Help; display usage and help summary (cheat sheet).
+
+.TP
+\fB\-\-help\fR
+Help; display the full manual in the form of an inbuilt man page.
+
+
+.TP
+\fB\-\-version\fR
+Version; displays the version number.
 
 .SH EXIT STATUS
-getip returns 0 on success, and non-zero on failure.
+\fBgetip\fR returns 0 on success, and non-zero on failure.
+.LP
+\fB0\fR   - Success
+.br
+\fB100\fR - Command line argument invalid.
+.br
+\fB101\fR - Command line option invalid.
+.br
+\fB102\fR - Command line argument missing.
+.br
+\fB103\fR - Command line more than one mode set.
+.br
+\fB104\fR - Command line both verbose and bare set.
+.br
+\fB105\fR - Temp file creation failed.
+.br
+\fB106\fR - Reading web source list failed.
+.br
+\fB107\fR - Not enough urls in the web source list file.
+.br
+\fB108\fR - Failed to get the IP address.
+.br
+\fB109\fR - Download program wget is not installed.
+.br
+\fB110\fR - Download program curl is not installed.
+.br
+\fB111\fR - Download programs wget and curl are not installed.
+.br
+\fB112\fR - Test Url Mode: No IP address.
+.br
+\fB113\fR - Test Url Mode: Multiple IP addresses.
+.br
+\fB114\fR - Test Url Mode: Server timed out.
 
 .SH BUGS
-No known bugs.
-
-.SH HOMEPAGE
-https://github.com/mattst/getip
-.LP
-Feel free to submit new IP address providing web pages to be added to the sources list.
+No known bugs. Please submit bug reports on the homepage.
 
 .SH AUTHOR
 <mattst@i-dig.info>
+
+.SH HOMEPAGE
+https://github.com/mattst/getip
+
+.SH CONTRIBUTE
+If you have a web server and would like to submit it to be used as a source in the web sources list then please see the homepage for details. It needs only a 2 line PHP program and would generate very little bandwidth - if lots of people did so it would be very helpful to the project.
+.LP
+Please feel free to submit new IP address providing web pages to be added to the web sources list. You should first check they are not already in the web source list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
+
+.SH COPYRIGHT
+Copyright <mattst@i-dig.info>, GNU General Public License v.3 or later. GPLv3+ http://gnu.org/licenses/gpl.html
 EOF
 
     # Display the man page.
@@ -458,7 +556,7 @@ Exit_With_Error_Message()
     fi
 
     echo "" >&2
-    echo "Use \"getip -h\" for usage and help or \"man getip\" (if installed)." >&2
+    echo "Use -h for help summary (cheat sheet) or --help for the full manual." >&2
 
     exit "$err_num"
 }
@@ -567,7 +665,7 @@ Read_Source_Url_List()
 # Function that randomizes the $web_sources array. Since this script is being publicly released it
 # is sensible to randomize the sources so as not to place undue pressure on the servers at the top
 # of the list. This is an implementation of the Knuth shuffle algorithm (aka Fisher-Yates shuffle),
-# which is a very efficient randomizer, needing just one pass through an array. 
+# which is a very efficient randomizer, needing just one pass through an array.
 # IMPORTANT: THE $web_sources ARRAY MUST BE INDEXED FROM 0 FOR THIS FUNCTION.
 Randomize_Url_List()
 {
@@ -1377,9 +1475,9 @@ Handle_Check_Mode()
 
 # Before processing the arguments with getopts, check for long options:
 
-# Check if the first arg is "--help", if so display help and exit (-h is handled by getopts).
-if [ "$1" = "--help" -o "$1" = "-?" ]; then
-    Display_Usage_Message
+# Check for "--help", if so display the man page version of help (-h is handled by getopts).
+if [ "$1" = "--help" ]; then
+    Display_Help_Man_Page
     exit "$EXIT_SUCCESS"
 
 # Check if the first arg is "--version", etc., if so display version number and exit.
@@ -1427,7 +1525,7 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
 
         h)
             # -h has been used, display help and then exit.
-            Display_Usage_Message
+            Display_Help_Summary
             exit "$EXIT_SUCCESS"
             ;;
 

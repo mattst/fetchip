@@ -1,7 +1,6 @@
 .\" Manpage for getip.
 
-
-.TH GETIP 1 "30 Oct 2015" "1.0" "GETIP VERSION 1.0"
+.TH GETIP 1 "01 Nov 2015" "1.0.1" "GETIP VERSION 1.0.1"
 
 .SH NAME
 
@@ -83,15 +82,20 @@ Sets the web Sources list file; \fBgetip\fR can use a custom web sources list fi
 
 .TP
 \fB\-b\fR
-Bare output; prints only the IP address. Warning with this option error messages are not displayed. The option exists primarily so that \fBgetip\fR can be used very easily from within other scripts which should check the exit status value of \fBgetip\fR.
+Bare output; prints only the IP address. Warning: with this option error messages are not displayed. The option exists primarily so that \fBgetip\fR can be used very easily from within other scripts which should check the exit status value of \fBgetip\fR.
 
 .TP
 \fB\-v\fR
 Verbose; display detailed information while \fBgetip\fR runs.
 
 .TP
-\fB\-h\fR, \fB\-\-help\fR
-Help; display usage and help.
+\fB\-h\fR
+Help; display usage and help summary (cheat sheet).
+
+.TP
+\fB\-\-help\fR
+Help; display the full manual in the form of an inbuilt man page.
+
 
 .TP
 \fB\-\-version\fR
