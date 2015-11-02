@@ -8,7 +8,7 @@ getip retrieves the wide area network (WAN) IP address; this is sometimes referr
 
 .SH SYNOPSIS
 
-\fBgetip\fR [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-s sources_list] [-d download_program] [-v | -b] [-h]
+\fBgetip\fR [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-s sources_list] [-d download_program] [-v | -b] [-h] [--help]
 
 In typical usage no options are necessary.
 
@@ -21,7 +21,7 @@ From time to time a web page used as a source will stop providing IP addresses, 
 
 To prevent an incorrect IP address being provided \fBgetip\fR always retrieves the IP address from multiple sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBgetip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
 
-\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
+\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. The minimum number of urls needed for a valid list is 10. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
 
 The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally but clearly the most up-to-date list will not be used each time the script is run, and the quality of the list will degrade over time.
 
@@ -114,11 +114,11 @@ Version; displays the version number.
 .br
 \fB103\fR - Command line more than one mode set.
 .br
-\fB104\fR - Command line both verbose and bare set.
+\fB104\fR - Temp file creation failed.
 .br
-\fB105\fR - Temp file creation failed.
+\fB105\fR - The web source list file is not a file or url.
 .br
-\fB106\fR - Reading web source list failed.
+\fB106\fR - Reading the web source list file failed.
 .br
 \fB107\fR - Not enough urls in the web source list file.
 .br

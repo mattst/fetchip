@@ -2,12 +2,10 @@
 
 #
 # Name:             getip
-# Description:      Script to retrieve an external IPv4 address from IP providing web sites.
+# Description:      Script to retrieve a WAN IPv4 address from IP providing web sites.
 # Requirements:     UNIX/Linux, Bash, either curl or wget.
-# Usage:            getip [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-b] [-v] [-h]
 # Exit Status:      0 on success, and non-zero on failure.
 # Author:           mattst@i-dig.info
-# Version:
 # Homepage:         https://github.com/mattst/getip
 # License:          GNU General Public License v3 - http://www.gnu.org/copyleft/gpl.html
 #
@@ -143,10 +141,11 @@
 # Note on Bash: If 'local' is on the same line as a command then $? will contain local's exit status
 # instead of the command's, effectively $? will always be zero. Define the local first, e.g.
 #
-# local web_sources_temp_file
-# web_sources_temp_file=$(mktemp -q -t "getip.tmp.XXXXXX")
+# local example
+# example=$(program etc.)
 #
 #
+
 # http://stackoverflow.com/questions/4082966/what-are-the-alternatives-now-that-the-google-web-search-api-has-been-deprecated
 
 ##
@@ -184,7 +183,7 @@ web_sources=()
 web_sources_len="0"
 
 # Holds the minimum number of web sources that are required. Note: Consider removing this.
-web_sources_min="15"
+web_sources_min="10"
 
 # Holds the default number of web sources to use for verification. Range: >=2 and <=5.
 web_sources_verify_num="2"
@@ -261,8 +260,8 @@ EXIT_ERR_ARG_INVALID="100"
 EXIT_ERR_OPTION_INVALID="101"
 EXIT_ERR_ARG_MISSING="102"
 EXIT_ERR_MORE_THAN_ONE_MODE_SET="103"
-EXIT_ERR_VERBOSE_AND_BARE_SET="104"
-EXIT_ERR_TEMP_FILE_CREATION_FAILED="105"
+EXIT_ERR_TEMP_FILE_CREATION_FAILED="104"
+EXIT_ERR_WEB_SOURCE_LIST_INVALID="105"
 EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED="106"
 EXIT_ERR_NOT_ENOUGH_SOURCE_URLS="107"
 EXIT_ERR_FAILED_TO_GET_IP_ADDRESS="108"
@@ -337,7 +336,7 @@ getip retrieves the wide area network (WAN) IP address; this is sometimes referr
 
 .SH SYNOPSIS
 
-\fBgetip\fR [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-s sources_list] [-d download_program] [-v | -b] [-h]
+\fBgetip\fR [-g | -c | -u url] [-n num_sources] [-t timeout_secs] [-s sources_list] [-d download_program] [-v | -b] [-h] [--help]
 
 In typical usage no options are necessary.
 
@@ -350,7 +349,7 @@ From time to time a web page used as a source will stop providing IP addresses, 
 
 To prevent an incorrect IP address being provided \fBgetip\fR always retrieves the IP address from multiple sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBgetip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
 
-\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
+\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. The minimum number of urls needed for a valid list is 10. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
 
 The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally but clearly the most up-to-date list will not be used each time the script is run, and the quality of the list will degrade over time.
 
@@ -443,11 +442,11 @@ Version; displays the version number.
 .br
 \fB103\fR - Command line more than one mode set.
 .br
-\fB104\fR - Command line both verbose and bare set.
+\fB104\fR - Temp file creation failed.
 .br
-\fB105\fR - Temp file creation failed.
+\fB105\fR - The web source list file is not a file or url.
 .br
-\fB106\fR - Reading web source list failed.
+\fB106\fR - Reading the web source list file failed.
 .br
 \fB107\fR - Not enough urls in the web source list file.
 .br
@@ -501,62 +500,56 @@ Exit_With_Error_Message()
     # Some errors display a configurable piece of information, e.g. an option.
     local additional_info="$2"
 
-    # If bare output is set, just exit with no error message. Not sure about this?!
+    # If bare output is set, just exit with no error message.
     if [ "$bare_output" = "TRUE" ]; then
         exit "$err_num"
     fi
 
     # Output the appropriate error message to STDERR.
 
-    echo "" >&2
-
     if [ "$err_num" = "$EXIT_ERR_ARG_INVALID" ]; then
-        echo "The argument given to the $additional_info option is invalid." >&2
+        printf "\n%s\n" "The argument given to the $additional_info option is invalid." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_OPTION_INVALID" ]; then
-        echo "An invalid option has been entered." >&2
+        printf "\n%s\n" "An invalid option has been entered." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_ARG_MISSING" ]; then
-        echo "The argument is missing for the option: -$additional_info" >&2
+        printf "\n%s\n" "The argument is missing for the option: -$additional_info" >&2
 
     elif [ "$err_num" = "$EXIT_ERR_MORE_THAN_ONE_MODE_SET" ]; then
-        echo "Only one operation mode can be used at a time." >&2
-
-    elif [ "$err_num" = "$EXIT_ERR_VERBOSE_AND_BARE_SET" ]; then
-        echo "Verbose and bare output can not be used at the same time." >&2
+        printf "\n%s\n" "Only one operation mode can be used at a time." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_TEMP_FILE_CREATION_FAILED" ]; then
-        echo "Unable to create a temp file using 'mktemp'." >&2
+        printf "\n%s\n" "Unable to create a temp file using 'mktemp'." >&2
+
+    elif [ "$err_num" = "$EXIT_ERR_WEB_SOURCE_LIST_INVALID" ]; then
+        printf "\n%s\n" "The web sources list file is neither a local file nor a http url." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED" ]; then
-        echo "Unable to read the web sources file located at:" >&2
-        echo "$web_sources_list_location_display_text" >&2
+        printf "\n%s\n" "Unable to read the web sources list file located at:" >&2
+        printf "%s\n" "$web_sources_list_location_display_text" >&2
 
     elif [ "$err_num" = "$EXIT_ERR_NOT_ENOUGH_SOURCE_URLS" ]; then
-        echo "Not enough web sources urls, the minimum required is $web_sources_min." >&2
+        printf "\n%s\n" "Too few web sources in the web sources list file." >&2
+        printf "%s\n" "The minimum number of urls that are required is $web_sources_min." >&2
+        printf "%s\n" "[Note: HTTP redirections can cause this error to be" >&2
+        printf "%s\n" "displayed when the entered url does not exist.]" >&2
 
     elif [ "$err_num" = "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS" ]; then
-        echo "The script failed to get the IP address." >&2
+        printf "\n%s\n" "getip failed to get the IP address." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_WGET_NOT_INSTALLED" ]; then
-        echo "The program wget is not installed on your system." >&2
+        printf "\n%s\n" "wget is not installed on your system." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_CURL_NOT_INSTALLED" ]; then
-        echo "The program curl is not installed on your system." >&2
+        printf "\n%s\n" "curl is not installed on your system." >&2
 
     elif [ "$err_num" = "$EXIT_ERR_WGET_AND_CURL_NOT_INSTALLED" ]; then
-        echo "Neither wget nor curl are installed on your system." >&2
-        echo "" >&2
-        echo "The getip script requires either 'wget' or 'curl' to access the web, please" >&2
-        echo "install one of them in order to use this script. wget and curl are both" >&2
-        echo "programs that can retrieve web pages, and they are widely available for all" >&2
-        echo "UNIX/Linux based systems. The getip script works equally well with either," >&2
-        echo "but in tests on Debian and Linux Mint wget was consistently just a little" >&2
-        echo "faster. If both wget and curl are installed getip will use wget by default." >&2
+        printf "\n%s\n" "Neither wget nor curl are installed on your system." >&2
     fi
 
-    echo "" >&2
-    echo "Use -h for help summary (cheat sheet) or --help for the full manual." >&2
+    printf "\n%s\n" "-h      :  brief help (cheat sheet)." >&2
+    printf "%s\n"   "--help  :  full manual (a man page)." >&2
 
     exit "$err_num"
 }
@@ -1123,7 +1116,8 @@ Display_Stats()
 
     # Calculate the number of unique IP addresses held in $stats_ip_address_list.
     # Important: Use printf to avoid the new line that echo would add.
-    local ip_num_unique=$(printf "$stats_ip_address_list" | tr " " "\n" | sort -n | uniq | wc -l)
+    local ip_num_unique=$(printf "%s" "$stats_ip_address_list" | tr " " "\n" | \
+                                                            sort -n | uniq | wc -l)
 
     # Output the statistics.
 
@@ -1148,19 +1142,22 @@ Display_Stats()
 
     printf "%s\n" "------------------------------------------------------------------------------"
 
-    # Echo a warning if there were no valid IP addresses.
+    # Display a warning if there were no valid IP addresses.
     if [ "$stats_ip_valid_total" = "0" ]; then
-        printf "\nWARNING: The web sources did not supply any valid IP addresses at all. The\n"
-        printf "most likely cause is that you have lost your internet connection or possibly\n"
-        printf "the web source list file used is extremely out-of-date or corrupted.\n\n"
+        local msg1="WARNING: The web sources did not supply any valid IP addresses at all. The"
+        local msg2="most likely cause is that the internet connection has been lost, the timeout"
+        local msg3="was set far too low, or possibly the web sources list file used is extremely"
+        local msg4="out-of-date or even corrupted."
+        printf "\n%s\n%s\n%s\n%s\n\n" "$msg1" "$msg2" "$msg3" "$msg4"
     fi
 
-    # Echo a warning if the number of unique IP addresses is > 1, and list them.
+    # Display a warning if the number of unique IP addresses is > 1, and list them.
     if [ "$ip_num_unique" -gt "1" ]; then
-        printf "\nWARNING: The number of unique IP addresses retrieved exceeds one, it should be\n"
-        printf "exactly one, your IP address. One or more of the sources is no longer suitable\n"
-        printf "for use by this script. If you have the time please contact the developer with\n"
-        printf "the url of the problematic source, use the -h option for contact details.\n\n"
+        local msg1="WARNING: The number of unique IP addresses retrieved exceeds one. It should be"
+        local msg2="exactly one, your IP address. One or more of the sources is no longer suitable"
+        local msg3="for use by this script. If you have the time please contact the developer with"
+        local msg4="the url of the problematic source, use the --help option for contact details."
+        printf "\n%s\n%s\n%s\n%s\n\n" "$msg1" "$msg2" "$msg3" "$msg4"
 
         # List each unique IP address in a table along with its number of occurrences.
 
@@ -1170,10 +1167,10 @@ Display_Stats()
         local awk_ip_count='{ count_ip[$1]++ } END { for (ip in count_ip) \
                               printf("%-25s %d\n", ip, count_ip[ip]); }'
 
-        printf "Unique IP Addresses List:\n\n"
-        printf "IP Address         Num Occurrences\n"
+        printf "%s\n\n" "Unique IP Addresses List:"
+        printf "%s\n" "IP Address         Num Occurrences"
         printf "%s\n" "----------------------------------"
-        echo "$stats_ip_address_list" | tr " " "\n" | awk "$awk_ip_count"
+        echo "$stats_ip_address_list" | tr " " "\n" | awk "$awk_ip_count" | sort -n -k 2,2
         printf "%s\n" "----------------------------------"
     fi
 }
@@ -1220,8 +1217,8 @@ Handle_Get_IP_Mode()
     # 1 = has 1 IP address, 2 = has 2 IP addresses, 3 = no IP addresses, 4 = does not exist.
     # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip1.html"
     # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip2.html"
-    # web_sources[2]="https://crius.feralhosting.com/gencon/fakeip3.html"
-    # web_sources[2]="https://crius.feralhosting.com/gencon/fakeip4.html"
+    # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip3.html"
+    # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip4.html"
 
     # Loop through the urls in $web_sources. The script will exit from within this loop if the IP
     # address has been successfully retrieved from the required number of sources and verified.
@@ -1476,13 +1473,13 @@ Handle_Check_Mode()
 # Before processing the arguments with getopts, check for long options:
 
 # Check for "--help", if so display the man page version of help (-h is handled by getopts).
-if [ "$1" = "--help" ]; then
+if [ "$1" = "--help" -o "$1" = "-help" ]; then
     Display_Help_Man_Page
     exit "$EXIT_SUCCESS"
 
 # Check if the first arg is "--version", etc., if so display version number and exit.
 elif [ "$1" = "--version" -o "$1" = "-version" -o "$1" = "-ver" ]; then
-    echo "getip v. $version"
+    printf "%s\n" "getip v. $version"
     exit "$EXIT_SUCCESS"
 fi
 
@@ -1592,7 +1589,25 @@ while getopts ":gcu:bvhn:t:d:s:" option; do
 
         s)
             # -s has been used to set the location of the source urls list.
-            web_sources_list_user_set="$OPTARG"
+            user_set_list_tmp="$OPTARG"
+
+            # Make sure that it is either an existing local file or it is an http url, 
+            # just a rudimentary check by seeing if it begins with 'http'.
+
+            if [ -f "$user_set_list_tmp" ]; then
+                web_sources_list_user_set="$OPTARG"
+            
+            else
+                first_4_chars=${user_set_list_tmp:0:4}
+                first_4_chars_lc=$(echo "$first_4_chars" | tr '[:upper:]' '[:lower:]')
+
+                if [ "$first_4_chars_lc" = "http" ]; then
+                    web_sources_list_user_set="$OPTARG"
+
+                else
+                    Exit_With_Error_Message "$EXIT_ERR_WEB_SOURCE_LIST_INVALID"
+                fi
+            fi
             ;;
 
         \?)
@@ -1644,9 +1659,9 @@ else
     fi
 fi
 
-# If the user has set both verbose and bare output, display error and exit.
+# If both verbose and bare output are set, then verbose trumps bare.
 if [ "$verbose" = "TRUE" -a "$bare_output" = "TRUE" ]; then
-    Exit_With_Error_Message "$EXIT_ERR_VERBOSE_AND_BARE_SET"
+    bare_output="FALSE"
 fi
 
 # Determine whether to use wget or curl as the download program.
