@@ -1,14 +1,16 @@
 #!/bin/bash
 
 #
-# Name:             getip
-# Description:      Script to retrieve a WAN IPv4 address from IP providing web sites.
-# Requirements:     UNIX/Linux, Bash, either curl or wget.
-# Exit Status:      0 on success, and non-zero on failure.
-# Author:           mattst@i-dig.info
-# Homepage:         https://github.com/mattst/getip
-# License:          GNU General Public License v3 - http://www.gnu.org/copyleft/gpl.html
+# Name:            getip
+# Description:     Script to retrieve a WAN IPv4 address from IP providing web sites.
+# Requirements:    UNIX/Linux, Bash, either curl or wget.
+# Exit Status:     0 on success, and non-zero on failure.
+# Author:          mattst@i-dig.info
+# Homepage:        https://github.com/mattst/getip
+# License:         GNU General Public License v3 - http://www.gnu.org/copyleft/gpl.html
 #
+# getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the
+# external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
 #
 # The complete list of all utilities and Bash shell commands used by the getip script:
 #
@@ -19,134 +21,13 @@
 # on all modern UNIX like operating systems. If neither wget nor curl are installed the script will
 # advise the user to install one of them.
 #
-#
-# Description:
-#
-# getip is a script used to retrieve a wide area network (WAN) IPv4 address from behind a router
-# using web pages which provide the IP address in plain text or HTML. Note: IPv4 only, not IPv6.
-#
-# getip echoes the IP address so that it is displayed in the shell or so that it can be stored in a
-# variable if getip is called from within another script.
-#
-# Command line options (all optional, in typical use none are necessary.):
-#
-# -g           GET; get the IP from multiple sources and verify they are all the same (default).
-# -c           CHECK; display the IP address returned by all the web sources and show stats.
-# -u url       TEST; test an URL for possible inclusion in the source urls and show info.
-# -n number    Set the NUMBER of sources to use for verification. Range >=2 and <=5 (default 2).
-# -t seconds   Set the TIMEOUT for each source. Real numbers are permitted (e.g. '1.5', '0.75').
-# -b           BARE output; display only the IP address and not the "IPv4 address:" prefix.
-# -v           VERBOSE; output information while the script is running.
-# -h, --help   HELP; output program usage and help.
-# --version    Display the VERSION of the script.
-#
-# GET is the default operation so -g is not needed on the command line, is uses the default number
-# of sources which is 2 unless '-n number' is used to set the number of sources.
-#
-#
-# The getip script uses a file containing a long list of web pages, each of which provide the IP
-# address in either plain text or HTML, this is known as the sources list. Each web page url is on a
-# separate line in the file. The sources list is stored online on the script's github page. Each
-# time the script is run it downloads the sources list - by doing this the script always uses the
-# most up-to-date version of the list, rather than a local copy which would soon contain sites that
-# no longer exist, have become slow to respond, or which are otherwise no longer reliable.
-#
-# From time to time a web page used as a source will stop providing IP addresses, either temporarily
-# or permanently, but an example IP address might remain on the page, or an IP-like software version
-# number might be present on the page (embedded within the HTML) and which could be mistaken for a
-# real IP address (although the script tries hard to spot and ignore these). In such circumstances
-# an IP address fetching script could provide a user with an incorrect IP address. The getip script
-# makes sure this does not happen.
-#
-# The getip script retrieves the IP address from multiple sources and checks that they have supplied
-# the same IP address. The default number of sources used is 2 but this can be set on the command
-# line using the -n option, the range of values is >=2 and <=5. The default is considered to be
-# sufficient due to the unlikelihood of 2 sources both providing the same incorrect IP address. Very
-# cautious users might want to use 3 sources, while 5 would indicate paranoia. Clearly the more
-# sources used the longer it takes [guesstimate about 1 second per source on average].
-#
-#
-# Description of Options:
-# FAST                   - Command line switch: -f
-#
-# In fast mode getip will retrieve the IP address from just one source with no verification. It is
-# generally faster, though not guaranteed to be. It is suggested that fast mode only be used when a
-# user already knows their IP address and is seeking confirmation of it, for instance if checking
-# whether a connection to a VPN has finished or succeeded. Fast mode should never be used when
-# calling getip from within another script.
-#
-#
-# CHECK                  - Command line switch: -c
-#
-# In check mode getip will display a table in the shell of all the web sources, the IP address which
-# was retrieved from the source, or a message of failure, and the time taken to retrieve the IP
-# address. In addition it displays some statistics at the end. It can be used by users to check that
-# all the sources are functioning correctly. getip will continue to function perfectly adequately
-# with even 25% of the sources down. If more than 15% are down you may wish to download the latest
-# version of the script or manually delete sources which aren't working from the list below.
-#
-#
-# TESTURL                - Command line switch: -u url
-#
-# In test url mode getip will test the url to see if it is suitable for adding to the source list.
-# getip will display a small table showing the url's status; whether the Url successfully returned a
-# single valid IP address, or failed by supplying more than one valid IP address, no IP address at
-# all, or if the timeout was exceeded. Only experienced users should use this feature to add an url
-# to the source list. If you do use this to find a new url that is suitable for inclusion please
-# contact the developer with the url.
-#
-#
-# The other command line options:
-#
-# NUMBER OF SOURCES      - Command line switch: -n num_sources [Default 2, range: >=2 and <=5.]
-#
-# Sets the number of sources to use in the multi operation mode.
-#
-#
-# TIMEOUT, FOR EACH SOURCE   - Command line switch: -t seconds
-#                            - Range >=0.2 and <=15. [Real numbers are permitted.]
-#                            - Default timeout in multi mode:    1.0
-#                            - Default timeout in fast mode:     0.75
-#                            - Default timeout in check mode:    10.0
-#                            - Default timeout in test url mode: 10.0
-#
-# Sets the timeout in seconds for each source, not an overall timeout for the script. When a source
-# gives no response or is slow to respond, getip simply moves on to the next source in the sources
-# list. Each of the operation modes has its own default timeout (shown above). The allowed range is
-# large, >=0.2 and <=15, as large variations in speed of web access and the user's physical location
-# both mean a flexible timeout is sensible, however values less than 0.75 or greater than 3 are not
-# usually advisable in multi or fast mode. In check and test url modes a high timeout facilitates
-# checking whether sources are functioning at all or not.
-#
-# There is no 'global' timeout feature for getip, however the timeout multiplied by the number of
-# sources means there is a de facto 'global' timeout.
-#
-#
-# BARE                   - Command line switch: -b
-#
-# Turn bare output on - the script will display only the IP address and not the "IPv4 address:"
-# prefix.
-#
-#
-# VERBOSE                - Command line switch: -v
-#
-# Turns verbose on - the script will output diagnostic information while it runs.
-#
-#
-# HELP                   - Command line switch: -h or --help
-#
-# Outputs program usage and help then exits.
-#
-#
 # Note on Bash: If 'local' is on the same line as a command then $? will contain local's exit status
 # instead of the command's, effectively $? will always be zero. Define the local first, e.g.
 #
 # local example
 # example=$(program etc.)
 #
-#
 
-# http://stackoverflow.com/questions/4082966/what-are-the-alternatives-now-that-the-google-web-search-api-has-been-deprecated
 
 ##
 ## START OF SCRIPT.
@@ -160,7 +41,6 @@
 
 # Holds the script version number.
 version="1.0.1"
-
 
 # Constants to hold the 3 operation modes.
 GET_IP_MODE="1"
@@ -231,13 +111,13 @@ bare_output="FALSE"
 # Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
 user_agent="Mozilla/5.0 (compatible; getipscript/$version; +https://github.com/mattst/getip)"
 
-# Variables used to hold statistical information in the check operation mode.
+# Variables used to hold statistical data for the check operation mode.
 stats_ip_address_list=""
 stats_ip_valid_total="0"
 stats_ip_invalid_total="0"
 stats_ip_retrieval_times_list=""
 
-# Variables used only for neatly displaying information.
+# Variables used only for neatly displaying information if being verbose.
 web_sources_list_location_display_text=""
 download_program_display_text=""
 
@@ -490,7 +370,7 @@ EOF
 }
 
 
-# Function to send the various error messages to STDERR.
+# Function to output the various error messages to STDERR and then exit the script.
 Exit_With_Error_Message()
 {
     # Assign $err_num the value of the 1st function arg (NOT script arg).
@@ -533,7 +413,7 @@ Exit_With_Error_Message()
         printf "\n%s\n" "Too few web sources in the web sources list file." >&2
         printf "%s\n" "The minimum number of urls that are required is $web_sources_min." >&2
         printf "%s\n" "[Note: HTTP redirections can cause this error to be" >&2
-        printf "%s\n" "displayed when the entered url does not exist.]" >&2
+        printf "%s\n" "displayed when the entered domain does not exist.]" >&2
 
     elif [ "$err_num" = "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS" ]; then
         printf "\n%s\n" "getip failed to get the IP address." >&2
@@ -555,7 +435,8 @@ Exit_With_Error_Message()
 }
 
 
-# Function to store the urls from the appropriate web sources list in $web_sources.
+# Function to store the web sources urls, from the appropriate web sources list, in the $web_sources
+# array.
 Read_Source_Url_List()
 {
     # Constants to specify whether the web sources list is an url or local file.
@@ -623,7 +504,7 @@ Read_Source_Url_List()
             fi
         fi
 
-        # Set the filename for the array reading to the temp filename.
+        # Set the filename for the array building to the temp filename.
         web_sources_list_file="$web_sources_temp_file"
     fi
 
@@ -676,8 +557,8 @@ Randomize_Url_List()
 
         # Modulo bias avoidance as per Knuth shuffle algorithm description. Calculate the highest
         # usable random number so that the modulo by index calculation will not result in any modulo
-        # bias. Note: Not really necessary but the function only takes ~0.003 seconds with 100 urls
-        # (on my PC) so why not do it right!? That's just ~0.15% of the approx. average run time.
+        # bias. Note: Not really necessary but the function only takes ~0.003 seconds with 120 urls
+        # (on my PC) so why not do it right!?
 
         # Integer arithmetic, the division will be rounded down.
         local rand_num_highest_usable
@@ -719,25 +600,11 @@ Extract_IP_Addresses_From_File()
     # which is given to it as input.
 
     # The regex ip_like_sequence deliberately matches IP address like sequences which are too long
-    # to be a valid IP so that the regex does not examine something like '11.22.33.44.55' and
-    # match just the '11.22.33.44' section of it, and in so doing cause something that is
-    # definitely not an IP address to get mistaken for a valid one. IP address like sequences
-    # are checked in the END section to make sure they have exactly 4 segments, separated by
-    # dots (".") and that each of the 4 numbers are within the 0..255 range of a valid IP.
-
-    # The regex digit_sequence_too_long_not_ip will match sequences of numbers which are longer than
-    # 3 digits. They are all removed as they can not possibly be part of an IP address.
-
-    # The regex versioning_not_ip attempts to spot version numbers which happen to be in the same
-    # format as an IP address (which they are often are). e.g. Version 1.2.0.12
-    # Any ip_like_sequence which follows words like "Version", "Ver", or "V", will be removed.
-
-    # Version numbers are also often embedded in an url like "1.2.3.4" in these examples:
-    # e.g. <script language="Java_script" src="http://web.com/libs/1.2.3.4/file.js"></script>
-    # e.g. <script language="Java_script" src="http://web.com/libs/v.1.2.3.4/file.js"></script>
-    # The regexes begins_with_fwd_slash_not_ip and ends_with_fwd_slash_not_ip match an
-    # ip_like_sequence which begins or ends with a forward slash so that those sequences can be
-    # removed.
+    # to be a valid IP so that the regex does not examine something like '11.22.33.44.55' and match
+    # just the '11.22.33.44' section of it, and in so doing cause something that is definitely not
+    # an IP address to get mistaken for a valid one. IP address like sequences are checked in the
+    # END section to make sure they have exactly 4 segments, separated by dots (".") and that each
+    # of the 4 numbers are within the 0..255 range of a valid IP.
 
     local awk_extract_ip_addresses='
     BEGIN {
@@ -745,7 +612,7 @@ Extract_IP_Addresses_From_File()
         # deliberately a loose match, the END section will check for IP address validity.
         ip_like_sequence = "[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+[0-9.]*";
 
-        # Regex to match a number sequence longer than 3 digits.
+        # Regex to match number sequences longer than 3 digits.
         digit_sequence_too_long_not_ip = "[0-9][0-9][0-9][0-9]+";
 
         # Regex to match an IP address like sequence which is a version number.
@@ -764,7 +631,7 @@ Extract_IP_Addresses_From_File()
         # Replace sequences on line which will interfere with extracting genuine IPs. Use a
         # replacement char and not the empty string to avoid accidentally creating a valid IP
         # address from digits on either side of the removed sections. Use "/" as the replacement
-        # char for the 2 "Fwd_slash" regexes so that multiple number dot slash sequences all get
+        # char for the 2 "fwd_slash" regexes so that multiple number dot slash sequences all get
         # removed, as using "x" could result in inadvertently leaving such a sequence in place.
         # e.g. "/lib1.2.3.4/5.6.7.8/9.10.11.12/file.js" would leave "/lib1.2.3.4xx/file.js".
 
@@ -819,11 +686,10 @@ Extract_IP_Addresses_From_File()
 
 
 # Function that retrieves the web source's content and returns all unique IP addresses in it. The
-# function provides an accurate timeout facility; neither curl nor wget reliably honour any timeout
-# value which has been set nor do they allow timeouts in fractions of a second. Since getip uses so
-# many web sources a low timeout is used, if one source fails to return quickly then the next source
-# is tried. With this methodology a reliable and accurate timeout is required, this function
-# provides it.
+# function provides an accurate timeout facility; neither wget nor curl provide an accurate timeout
+# in the fractions of a second. Since getip uses so many web sources a low timeout is used, if one
+# source fails to return quickly then the next source is tried. With this methodology a reliable and
+# accurate timeout is required, this function provides it.
 Get_IP_Address_From_Web_Source()
 {
     # Assign $web_source_url the value of the 1st function arg (NOT script arg).
@@ -850,16 +716,27 @@ Get_IP_Address_From_Web_Source()
 
     # Download the web page's source placing it in the temp file and store the process's id.
 
+    # Use a fail safe timeout. Occasionally wget and curl will not terminate in a timely manner
+    # after receiving the -SIGTERM request from kill. I have been unable to establish exactly why.
+    # The default timeout for wget is 15 mins, for curl it is 5 mins, these are too high for this
+    # script, so a fail safe timeout has been added to make sure the download program's processes 
+    # do not persist for very long when the download programs do not terminate quickly after the 
+    # kill command. Note that this is just a precaution for relatively rare circumstances.
+    local timeout_fail_safe="30"
+
+    local download_process_id
+
     if [ "$download_program" = "$DOWNLOAD_PROGRAM_WGET" ]; then
 
-        wget --quiet --tries=1 --user-agent="$user_agent" --output-document=- \
-                                    "$web_source_url" > "$web_source_temp_file" &
-        local download_process_id=$!
+        wget --quiet --tries=1 --timeout="$timeout_fail_safe" --user-agent="$user_agent" \
+                                --output-document=- "$web_source_url" > "$web_source_temp_file" &
+        download_process_id=$!
 
     elif [ "$download_program" = "$DOWNLOAD_PROGRAM_CURL" ]; then
 
-        curl --silent --user-agent "$user_agent" "$web_source_url" > "$web_source_temp_file" &
-        local download_process_id=$!
+        curl --silent --max-time "$timeout_fail_safe" --user-agent "$user_agent" \
+                                                    "$web_source_url" > "$web_source_temp_file" &
+        download_process_id=$!
     fi
 
     # Even if kill has both stdout and stderr redirected to /dev/null the death of the process is
@@ -875,7 +752,7 @@ Get_IP_Address_From_Web_Source()
     while [ "$is_download_done" = "FALSE" -a "$is_download_timed_out" = "FALSE" ]; do
 
         # Store whether the wget/curl download process is still listed by ps.
-        ps -e | grep --quiet "$download_process_id"
+        ps -A | grep --quiet "$download_process_id"
         local process_grep_ret_val=$?
 
         # If the url download process has finished.
@@ -933,21 +810,16 @@ Get_IP_Address_From_Web_Source()
         fi
     fi
 
-    # If the url download process timed out (which it must have done or this section of the
-    # function would not have been reached) then kill the process (and make doubly sure).
+    # If the url download process timed out, which it did or this section would not be reached,
+    # kill the process using -SIGTERM which will allow the program to clean up after itself. Note:
+    # DO NOT USE -SIGKILL, wget/curl may leave sockets open, temp files, child processes etc..
 
-    # Since the process being killed has been disowned (removed from the shell's active jobs
-    # table) the redirect of stdout and stderr to /dev/null may be unnecessary to hide the kill
-    # messages, it is not necessary on the 3 Linux systems used to test the script, other OSes?
+    # Since the process being killed has been disowned (removed from the shell's active jobs table)
+    # the redirect of stdout and stderr to /dev/null may be unnecessary to hide the kill messages,
+    # it is not necessary on the Linux systems used to test the script, other OSes?
 
     if [ "$is_download_timed_out" = "TRUE" ]; then
-
-        kill -INT "$download_process_id" > /dev/null 2>&1
-        local kill_ret_val=$?
-
-        if [ "$kill_ret_val" -ne "0" ]; then
-            kill -KILL "$download_process_id" > /dev/null 2>&1
-        fi
+        kill -SIGTERM "$download_process_id" > /dev/null 2>&1
     fi
 
     # Delete the temp file.
@@ -1219,9 +1091,9 @@ Handle_Get_IP_Mode()
     # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip2.html"
     # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip3.html"
     # web_sources[1]="https://crius.feralhosting.com/gencon/fakeip4.html"
-
+ 
     # Loop through the urls in $web_sources. The script will exit from within this loop if the IP
-    # address has been successfully retrieved from the required number of sources and verified.
+    # address has been successfully retrieved and verified by the required number of sources.
     local url
 
     for url in "${web_sources[@]}"; do
@@ -1283,8 +1155,32 @@ Handle_Get_IP_Mode()
             Verify_IP_List "${ip_list[@]}"
             local verify_ip_list_ret_val=$?
 
+            # If the IP addresses in the array are all the same.
+            if [ "$verify_ip_list_ret_val" = "$IP_ADDRESS_LIST_VERIFICATION_SUCCESS" ]; then
+
+                # If the array now contains the required number of IP addresses to use for
+                # verification then output the IP address and exit.
+                if [ "$ip_counter" -eq "$web_sources_verify_num" ]; then
+
+                    if [ "$verbose" = "TRUE" ]; then
+                        printf "\n%-25s %s" "IP List Verification:" "Succeeded "
+                        printf "%s\n" "[$ip_counter identical IP addresses]"
+                        printf "\n%-25s %s\n" "IPv4 address:" "$ip_address"
+                    else
+                        if [ "$bare_output" = "TRUE" ]; then
+                            printf "%s\n" "$ip_address"
+                        else
+                            printf "%s\n" "IPv4 address: $ip_address"
+                            printf "%s\n" "[Verified using $web_sources_verify_num web sources.]"
+                        fi
+                    fi
+
+                    # The successful exit point of the script in getip mode.
+                    exit "$EXIT_SUCCESS"
+                fi
+
             # If the IP addresses in the array are NOT all the same then re-start.
-            if [ "$verify_ip_list_ret_val" = "$IP_ADDRESS_LIST_VERIFICATION_FAILURE" ]; then
+            elif [ "$verify_ip_list_ret_val" = "$IP_ADDRESS_LIST_VERIFICATION_FAILURE" ]; then
 
                 if [ "$verbose" = "TRUE" ]; then
                     printf "\n%-25s %s\n" "IP List Verification:" "Failed [IP addresses differed]"
@@ -1294,29 +1190,6 @@ Handle_Get_IP_Mode()
                 # Reset the array and counter variables.
                 unset ip_list
                 ip_counter="0"
-            fi
-
-            # If the array now contains the required number of IP addresses to use for verification
-            # then output the IP address and exit. Note: The if statement below will only evaluate
-            # to true if the IP addresses in the array are all the same, if they weren't then
-            # $ip_counter would have been set to 0 in the conditional above.
-            if [ "$ip_counter" -eq "$web_sources_verify_num" ]; then
-
-                if [ "$verbose" = "TRUE" ]; then
-                    printf "\n%-25s %s" "IP List Verification:" "Succeeded "
-                    printf "%s\n" "[$ip_counter identical IP addresses]"
-                    printf "\n%-25s %s\n" "IPv4 address:" "$ip_address"
-                else
-                    if [ "$bare_output" = "TRUE" ]; then
-                        printf "%s\n" "$ip_address"
-                    else
-                        printf "%s\n" "IPv4 address: $ip_address"
-                        printf "%s\n" "[Verified using $web_sources_verify_num web sources.]"
-                    fi
-                fi
-
-                # The exit point of the script in getip mode.
-                exit "$EXIT_SUCCESS"
             fi
         fi
 
@@ -1331,6 +1204,12 @@ Handle_Get_IP_Mode()
 # Function which controls testing a web page to see if suitable for inclusion in the source list.
 Handle_Test_Url_Mode()
 {
+    printf "\n%-22s %s\n" "Script Version:" "$version"
+    printf "%-22s %s\n" "Operation Mode:" "Test Url"
+    printf "%-22s %s\n" "Test Url:" "$test_url_address"
+    printf "%-22s %s\n" "Download Program:" "$download_program_display_text"
+    printf "%-22s %s\n" "Timeout  (Seconds):" "$timeout"
+
     local time_start=$(date +%s.%N)
 
     # Store any IP addresses in the page source of $test_url_address in $ip_address.
@@ -1346,13 +1225,8 @@ Handle_Test_Url_Mode()
     local time_stop=$(date +%s.%N)
     local time_taken=$(printf "%.3F" $(echo "$time_stop - $time_start" | bc -l))
 
-    # 'Pretty print' the test results.
+    # Print the test results.
 
-    printf "\n%-22s %s\n" "Script Version:" "$version"
-    printf "%-22s %s\n" "Operation Mode:" "Test Url"
-    printf "%-22s %s\n" "Test Url:" "$test_url_address"
-    printf "%-22s %s\n" "Download Program:" "$download_program_display_text"
-    printf "%-22s %s\n" "Timeout  (Seconds):" "$timeout"
     printf "%-22s %s\n" "Duration (Seconds):" "$time_taken"
 
     if [ "$get_ip_ret_val" -eq "$SINGLE_VALID_IP" ]; then
