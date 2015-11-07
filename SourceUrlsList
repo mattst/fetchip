@@ -1,8 +1,7 @@
 #
-# Source urls list for the getip script. See: https://github.com/mattst/getip
+# Web source urls list for the getip script. See: https://github.com/mattst/getip
 #
-# The following list of web page urls all provide the IP address of the connecting machine.
-# They each return the IP address either on its own or within some plain text or HTML. 
+# The following list of web pages all provide the IP address of the connecting machine.
 #
 # No web pages should be added to this list without testing for suitability using getip's
 # test url feature, e.g.  getip -u url
