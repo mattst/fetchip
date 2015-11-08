@@ -8,11 +8,6 @@ getip retrieves the wide area network (WAN) IP address; this is sometimes referr
 
 .SH SYNOPSIS
 \fBgetip\fR [OPTION...]
-.br
-\fBgetip\fR [ --help | --version ]
-
-In typical usage no options are necessary.
-
 
 .SH DESCRIPTION
 
