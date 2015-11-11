@@ -1,48 +1,48 @@
-.\" Manpage for getip.
+.\" Manpage for fetchip.
 
-.TH GETIP 1 "04 Nov 2015" "1.0.1" "GETIP VERSION 1.0.1"
+.TH FETCHIP 1 "10 Nov 2015" "1.0.1" "FETCHIP VERSION 1.0.1"
 
 .SH NAME
 
-getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
+fetchip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
 
 .SH SYNOPSIS
-\fBgetip\fR [OPTION...]
+\fBfetchip\fR [OPTION...]
 
 .SH DESCRIPTION
 
-\fBgetip\fR is a \fBBASH\fR script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBSTDOUT\fR). \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
+\fBfetchip\fR is a BASH script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBstdout\fR). \fBfetchip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
 
 From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the web page, or an IP-address-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot these so they can be ignored). In such cases, or in other similar ones, an IP address fetching script could provide an incorrect IP address.
 
-To prevent an incorrect IP address being provided \fBgetip\fR always retrieves the IP address from multiple sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBgetip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
+To prevent an incorrect IP address being provided \fBfetchip\fR always retrieves the IP address from multiple web sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBfetchip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
 
-\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. The minimum number of urls needed for a valid list is 10. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
+\fBfetchip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBfetchip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBfetchip\fR. An alternative web sources list file can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The http urls in a web sources list file must each be on a separate line with no additional whitespace, any line which does not begin with a http url will be ignored. The minimum number of urls needed for a valid list is 10. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
 
-The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally but clearly the most up-to-date list will not be used each time the script is run, and the quality of the list will degrade over time.
+The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally, but clearly the most up-to-date list will not be used each time the script is run, and the reliability of such a list will degrade over time.
 
 The web sources list is randomized every time the script is run. This is so that undue pressure is not placed on servers at the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
 
-\fBgetip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which can accept timeouts in the fractions of a second. Since \fBgetip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBgetip\fR simply moves on to the next one. In Get IP mode the default timeout for each web source is 1.5 seconds. If modifying this a sensible range would be 0.75 to 3 seconds but tweaking the timeout for your internet connection's latency (speed of response) can result in improved performance (on average).
+\fBfetchip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which can accept timeouts in the fractions of a second. Since \fBfetchip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBfetchip\fR simply moves on to the next one. The default timeout for each web source is 1.5 seconds. If modifying this a sensible range would be 0.75 to 3 seconds but tweaking the timeout for your internet connection's latency (speed of response) can result in improved performance (on average).
 
-New users are advised to try the \fB-v\fR verbose option to see the current settings, the number of urls in the web sources list, etc., and (more importantly) to see a comprehensive representation of what the script is doing while it runs. This will help new users gain confidence in \fBgetip's\fR reliability. Running it repeatedly with different timeout values can help users fine tune the best timeout for them to use. e.g. \fB-v\fR \fB-t\fR \fB0.75\fR ... \fB-v\fR \fB-t\fR \fB3\fR. Once a value has been decided on an alias can be created which uses that timeout so it is always used, advanced users can change the value of the variable 'TIMEOUT_DEFAULT_GET_IP_MODE' in the script itself if they prefer.
+New users are advised to try the \fB-v\fR verbose option to see the settings, the number of urls in the web sources list file, etc., and (more importantly) to see a comprehensive representation of what the script is doing while it runs. This will help new users gain confidence in \fBfetchip's\fR reliability. Running it repeatedly with different timeout values can help users fine tune the best timeout for them to use. e.g. \fB-v\fR \fB-t\fR \fB0.75\fR ... \fB-v\fR \fB-t\fR \fB3\fR. Once a value has been decided on an alias can be created which always uses that timeout.
 
-The \fBgetip\fR script retrieves \fBIPv4\fR addresses only and not \fBIPv6\fR addresses.
+The \fBfetchip\fR script retrieves IPv4 addresses only and not IPv6 addresses.
 
-All output is printed to \fBSTDOUT\fR except for error messages which are printed to \fBSTDERR\fR.
+All output is printed to \fBstdout\fR except for error messages which are printed to \fBstderr\fR.
 
 .SH REQUIREMENTS
 
-\fBgetip\fR is a \fBBASH\fR script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern \fBUNIX\fR like systems come with \fBwget\fR pre-installed. \fBwget\fR and \fBcurl\fR are both command line programs which can download web pages from the internet. \fBgetip\fR works very well with them both but, in lots of tests on \fBDebian\fR and \fBLinux\fR \fBMint\fR, \fBwget\fR was consistently just a little faster (approx. 200 milliseconds with the default options and using the same web sources). If both \fBwget\fR and \fBcurl\fR are installed \fBgetip\fR will use \fBwget\fR by default, if only one of them is installed then that one will be automatically used. See: \fB\-p\fR \fBdownload_program\fR
+\fBfetchip\fR is a BASH script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern UNIX-like operating systems come with wget pre-installed. wget and curl are both command line programs which can download web pages from the internet. \fBfetchip\fR works very well with them both but, in lots of tests on Debian and Linux Mint, wget was consistently just a little faster. If both wget and curl are installed \fBfetchip\fR will use wget by default, if only one of them is installed then that one will be automatically used. See: \fB\-p\fR \fBdownload_program\fR
 
 .SH OPTIONS
 .BR
-In typical usage no options are necessary.
+In typical usage no options are needed; \fB\-f\fR is the default.
 .BR
 
 .TP
-\fB\-g\fR
-Get IP mode (default); print the WAN IP address. This will retrieve the IP address from multiple web sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-g\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
+\fB\-f\fR
+Fetch IP mode (default); print the WAN IP address. This will retrieve the IP address from multiple web sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-f\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
 
 .TP
 \fB\-c\fR
@@ -50,19 +50,19 @@ Check mode; print a table containing the url of each web source in the list, the
 
 .TP
 \fB\-u\fR \fBurl\fR
-Test Url mode; tests an url for possible inclusion in the web sources list. It will print a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. [This option is used during web sources list maintenance and is not needed by the average user.]
+Test Url mode; tests a http url for possible inclusion in the web sources list. It will print a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. [This option is used during web sources list maintenance and is not needed by the average user.]
 
 .TP
 \fB\-n\fR \fBnum_web_sources\fR
-Sets the Number of web sources to use for IP address verification in Get IP mode; the allowed range of values is >=2 and <=5. The default value is 2. See: \fBDESCRIPTION\fR
+Sets the number of web sources to use for IP address verification. The allowed range of values is >=2 and <=5. The default value is 2. See: \fBDESCRIPTION\fR
 
 .TP
 \fB\-t\fR \fBnum_seconds\fR
-Sets the Timeout for each web source; when a web source gives no response or is slow to respond \fBgetip\fR moves on to the next source. \fB\-t\fR sets the timeout in seconds for how long to give each source to complete. Real numbers are permitted. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB2\fR. The allowed range of seconds is >=0.2 and <=15 but these are extremes. See: \fBDESCRIPTION\fR
+Sets the timeout for each web source; when a web source gives no response or is slow to respond \fBfetchip\fR moves on to the next source. \fB\-t\fR sets the timeout in seconds for how long to give each source to complete. Real numbers are permitted. The allowed range of seconds is >=0.2 and <=15 but these are extremes. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB3\fR. See: \fBDESCRIPTION\fR
 
 The default timeouts are dependant on mode, they are:
 .br
-Get IP mode    -  1.5 seconds
+Fetch IP mode  -  1.5 seconds
 .br
 Check mode     -  10 seconds
 .br
@@ -72,19 +72,19 @@ The Check and Test Url mode timeouts are intentionally high. They are intended t
 
 .TP
 \fB\-p\fR \fBdownload_program\fR \fB[wget | curl]\fR
-Sets the Download program; \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR to download each web source and the web sources list file. Use either: \fB-p\fR \fBwget\fR or \fB-p\fR \fBcurl\fR. \fBwget\fR is slightly quicker on tested systems and so is used by default if both programs are installed. Note that if only \fBcurl\fR is installed then that will be used by default. See: \fBREQUIREMENTS\fR
+Sets the download program; either wget or curl can be used to download each web source and the web sources list file. Use either: \fB-p\fR \fBwget\fR or \fB-p\fR \fBcurl\fR. wget is slightly quicker on tested systems and so is used by default if both programs are installed. Note that if only curl is installed then that will be used by default. See: \fBREQUIREMENTS\fR
 
 .TP
 \fB\-s\fR \fBweb_sources_list\fR
-Sets a custom the web Sources list file; \fBgetip\fR can use a custom web sources list file or a local copy. Either a file path or http url to the file may be used. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
+Sets a custom web sources list file; \fBfetchip\fR can use a custom web sources list file or a local copy. Either a file path or a http url to the file may be used. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
 
 .TP
 \fB\-v\fR
-Verbose; print detailed information while \fBgetip\fR runs.
+Verbose; print detailed information while the script runs.
 
 .TP
 \fB\-b\fR
-Bare output; prints only the IP address on success or \fBFAILED\fR if the script fails to get the IP address from the required number of sources. Error messages will still be printed, redirect \fBSTDERR\fR to \fB/dev/null\fR if they are not wanted. This option exists primarily so that \fBgetip\fR can be used easily from within other scripts. 
+Bare output; prints only the IP address on success or \fBFAILED\fR if the script fails to get the IP address from the required number of sources. Error messages will still be printed, redirect \fBstderr\fR to \fB/dev/null\fR if they are not wanted. This option exists primarily so that \fBfetchip\fR can be used easily from within other scripts. 
 
 .TP
 \fB\-h\fR
@@ -99,13 +99,13 @@ Help; display the full manual in the form of a built-in man page.
 Version; print the version number.
 
 .SH EXIT STATUS
-\fBgetip\fR returns 0 on success, and non-zero on failure.
+\fBfetchip\fR returns 0 on success, and non-zero on failure.
 .LP
 \fB0\fR   - Success
 .br
-\fB101\fR - Command line argument invalid.
+\fB101\fR - Command line option unknown.
 .br
-\fB102\fR - Command line option invalid.
+\fB102\fR - Command line argument invalid.
 .br
 \fB103\fR - Command line argument missing.
 .br
@@ -113,11 +113,11 @@ Version; print the version number.
 .br
 \fB105\fR - Temp file creation failed.
 .br
-\fB106\fR - Web source list file is not a file or url.
+\fB106\fR - Web sources list file is not a file or url.
 .br
-\fB107\fR - Reading the web source list file failed.
+\fB107\fR - Reading the web sources list file failed.
 .br
-\fB108\fR - Not enough urls in the web source list file.
+\fB108\fR - Not enough urls in the web sources list file.
 .br
 \fB109\fR - Failed to get the IP address.
 .br
@@ -134,12 +134,16 @@ No known bugs. Please submit bug reports on the homepage.
 <mattst@i-dig.info>
 
 .SH HOMEPAGE
-https://github.com/mattst/getip
+https://github.com/mattst/fetchip
 
 .SH CONTRIBUTE
-If you have a web server and would like to allow it to be used as a source in the web sources list then please see the homepage for details. It needs only a 2 line PHP program and would generate very little bandwidth - if lots of people did so it would be very helpful to the project.
+If you have a web server and would like to allow it to be used as a source in the web sources list file then please see the homepage for details. It needs only a 2 line PHP program and would generate very little bandwidth - if lots of people did so it would be helpful to the project.
 .LP
-Please feel free to submit new IP address providing web pages to be added to the web sources list. You should first check they are not already in the latest web source list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
+Please feel free to submit new IP address providing web pages to be added to the web sources list. You should first check they are not already in the latest web sources list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
 
 .SH COPYRIGHT
-Copyright <mattst@i-dig.info>, GNU General Public License v.3 or later. GPLv3+ http://gnu.org/licenses/gpl.html
+Copyright <mattst@i-dig.info>
+.br
+GNU General Public License v.3
+.br
+GPLv3 http://gnu.org/licenses/gpl.html

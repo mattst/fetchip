@@ -1,24 +1,25 @@
 #!/bin/bash
 
 #
-# Name:            getip
+# Name:            fetchip
 # Description:     Script to retrieve a WAN IPv4 address from IP providing web sites.
 # Requirements:    UNIX/Linux, Bash, either wget or curl (wget is a little faster).
 # Exit Status:     0 on success, and non-zero on failure.
 # Author:          mattst@i-dig.info
-# Homepage:        https://github.com/mattst/getip
+# Homepage:        https://github.com/mattst/fetchip
 # License:         GNU General Public License v3 - http://www.gnu.org/copyleft/gpl.html
 #
-# getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the
+#
+# fetchip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the
 # external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
-# getip always gets the IP address from multiple sources so that it can be verified. See the
+# fetchip always gets the IP address from multiple sources so that it can be verified. See the
 # documentation for detailed information; a man page is built-in to this script and can be viewed
 # using the --help option, while -h will display a help summary (cheat sheet).
 #
 #
 # Developer's Notes:
 #
-# 1. The list of all utilities and Bash shell commands used by the getip script. With the exception
+# 1. A list of all utilities and Bash shell commands used by the fetchip script. With the exception
 #    of wget and curl all of the utilities below are expected to exist on all modern UNIX like
 #    operating systems (wget is fairly standard these days). If neither wget nor curl are installed
 #    the script will inform the user that one of them needs to be installed.
@@ -43,18 +44,13 @@
 # 3. If a function is called using the $() construct then a subshell will be created for it. This
 #    means that any exit call from inside the function will exit only the subshell and not the
 #    script. Watch out for this if the intention is to exit the script. This is seen in the function
-#    Get_IP_Address_From_Web_Source() which returns an error constant if its call to mktemp fails,
+#    Fetch_IP_Address_From_Web_Source() which returns an error constant if its call to mktemp fails,
 #    rather than exiting the script which is what happens if mktemp were to fail elsewhere.
 #
-# 4. Note that a regex pattern used with the =~ regular expression matching operator is handled
-#    differently by different versions of Bash. The safe way of formatting these is to always place
-#    the pattern in a variable first and then to avoid quoting the pattern in the conditional. e.g.
+# 4. A regex pattern used with the =~ regular expression matching operator is handled differently by
+#    different versions of Bash. The safe way of formatting these is to always place the pattern in
+#    a variable first and then to avoid quoting the pattern in the conditional. e.g.
 #
-# Wrong:
-#    regex_pattern="^regex$"
-#    if [[ "$variable" =~ "$regex_pattern" ]]; then
-#
-# Right:
 #    regex_pattern="^regex$"
 #    if [[ "$variable" =~ $regex_pattern ]]; then
 #
@@ -68,7 +64,7 @@
 VERSION="1.0.1"
 
 # The 3 operation modes.
-GET_IP_MODE="1"
+FETCH_IP_MODE="1"
 TEST_URL_MODE="2"
 CHECK_MODE="3"
 
@@ -80,12 +76,17 @@ WEB_SOURCES_VERIFY_NUM_DEFAULT="2"
 WEB_SOURCES_VERIFY_NUM_MIN="2"
 WEB_SOURCES_VERIFY_NUM_MAX="5"
 
-# The default, min, and max timeouts.
+# Various timeouts - all are in seconds.
+
+# The default, min, and max timeouts for web source downloads.
 TIMEOUT_MIN="0.2"
 TIMEOUT_MAX="15"
-TIMEOUT_DEFAULT_GET_IP_MODE="1.5"
+TIMEOUT_DEFAULT_FETCH_IP_MODE="1.5"
 TIMEOUT_DEFAULT_CHECK_MODE="10"
 TIMEOUT_DEFAULT_TEST_URL_MODE="10"
+
+# The timeout for downloading the web sources list file. [This must be an integer.]
+TIMEOUT_WEB_SOURCES_LIST="10"
 
 # The minimum number of web sources that are required (in a web sources list).
 WEB_SOURCES_MIN="10"
@@ -97,17 +98,20 @@ DOWNLOAD_PROGRAM_DEFAULT="$DOWNLOAD_PROGRAM_WGET"
 
 # The user agent to use for web page downloads. It is modelled on the one used by googlebot:
 # Googlebot 2.1: "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-USER_AGENT="Mozilla/5.0 (compatible; getipscript/$VERSION; +https://github.com/mattst/getip)"
+USER_AGENT="Mozilla/5.0 (compatible; fetchipscript/$VERSION; +https://github.com/mattst/fetchip)"
 
 # Holds a regex to match a http url (just a rudimentary case insensitive match).
-REGEX_HTTP_URL="^[Hh][Tt][Tt][Pp][Ss]?://.+\..+$"
+HTTP_URL_REGEX="^[Hh][Tt][Tt][Pp][Ss]?://.+\..+$"
 
-# The values returned by the Get_IP_Address_From_Web_Source() function.
-GET_IP_SINGLE_VALID_IP="0"
-GET_IP_NO_VALID_IP="1"
-GET_IP_MULTIPLE_VALID_IP="2"
-GET_IP_SERVER_TIMED_OUT="3"
-GET_IP_TEMP_FILE_CREATION_FAILED="4"
+# Holds the template to use when creating temp files.
+MKTEMP_TEMPLATE="fetchip.tmp.XXXXXX"
+
+# The values returned by the Fetch_IP_Address_From_Web_Source() function.
+FETCH_IP_SINGLE_VALID_IP="0"
+FETCH_IP_NO_VALID_IP="1"
+FETCH_IP_MULTIPLE_VALID_IP="2"
+FETCH_IP_SERVER_TIMED_OUT="3"
+FETCH_IP_TEMP_FILE_CREATION_FAILED="4"
 
 # The values returned by the Verify_IP_Address_List() function.
 VERIFY_IP_ADDRESS_LIST_SUCCESS="0"
@@ -115,18 +119,18 @@ VERIFY_IP_ADDRESS_LIST_FAILURE="1"
 
 # The various exit values.
 EXIT_SUCCESS="0"
-EXIT_ERR_ARG_INVALID="101"
-EXIT_ERR_OPTION_INVALID="102"
+EXIT_ERR_OPTION_UNKNOWN="101"
+EXIT_ERR_ARG_INVALID="102"
 EXIT_ERR_ARG_MISSING="103"
 EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED="104"
 EXIT_ERR_TEMP_FILE_CREATION_FAILED="105"
 EXIT_ERR_WEB_SOURCE_LIST_INVALID="106"
 EXIT_ERR_READ_WEB_SOURCE_LIST_FAILED="107"
 EXIT_ERR_NOT_ENOUGH_SOURCE_URLS="108"
-EXIT_ERR_FAILED_TO_GET_IP_ADDRESS="109"
+EXIT_ERR_FAILED_TO_FETCH_IP_ADDRESS="109"
 EXIT_ERR_TEST_URL_NO_IP_ADDRESS="110"
 EXIT_ERR_TEST_URL_MULTIPLE_IP_ADDRESS="111"
-EXIT_ERR_TEST_URL_TIMED_OUT="112"
+EXIT_ERR_TEST_URL_SERVER_TIMED_OUT="112"
 
 
 #
@@ -134,10 +138,10 @@ EXIT_ERR_TEST_URL_TIMED_OUT="112"
 #
 
 
-# The operation mode, default is $GET_IP_MODE.
-operation_mode="$GET_IP_MODE"
+# The operation mode, default is $FETCH_IP_MODE.
+operation_mode="$FETCH_IP_MODE"
 
-# Array to hold the urls from the web sources list.
+# Array to store the urls from the web sources list file.
 web_sources=()
 
 # The number of urls in $web_sources.
@@ -146,28 +150,33 @@ web_sources_len="0"
 # The number of web sources to use for verification.
 web_sources_verify_num="$WEB_SOURCES_VERIFY_NUM_DEFAULT"
 
-# Holds the url or local file if the user set the location of the web sources list.
+# The url or local file of a user set web sources list file.
 web_sources_list_user_set="FALSE"
 
 # The timeout value in seconds for each web source (no overall script timeout).
 timeout=""
 
-# Holds a user set timeout.
+# A user set timeout.
 timeout_user_set="FALSE"
+
+# A fail safe timeout is used when downloading web sources.
+# Set_Timeouts() explains the purposes of these variables.
+timeout_fail_safe=""
+timeout_fail_safe_offset="5"
 
 # Holds which download program to use.
 download_program="$DOWNLOAD_PROGRAM_DEFAULT"
 
-# Holds the user set download program.
+# A user set download program.
 download_program_user_set="FALSE"
 
-# Holds whether to use verbose output.
+# Whether to use verbose output.
 verbose="FALSE"
 
-# Holds whether to use bare output.
+# Whether to use bare output.
 bare_output="FALSE"
 
-# Holds the url of the web source to test in test url mode.
+# A user set url of a web source to test in test url mode.
 test_url_address=""
 
 # Variables used to hold statistical data in check mode.
@@ -190,18 +199,18 @@ web_sources_list_location_display_text=""
 Display_Help_Summary()
 {
 cat <<EOF
-getip v. $VERSION - script usage and help summary (cheat sheet).
+fetchip v. $VERSION - script usage and help summary (cheat sheet).
 
 --help displays the full manual, a built-in man page will be shown.
 
 A Bash script used to get the WAN IPv4 address (aka external/public IP).
 The IP address will be retrieved from multiple web sources and verified.
 
-getip [OPTION...]
+fetchip [OPTION...]
 
-In typical usage no options are needed; -g is the default.
+In typical usage no options are needed; -f is the default.
 
--g         Get the IP address from multiple sources and verify it. [Default]
+-f         Fetch the IP address from multiple sources and verify it. [Default]
 -n num     Set the num sources used to verify IP address. [Default: 2; >=2 <=5]
 -t secs    Set the timeout for each web source. [Default 1.5 secs; >=0.2 <=15]
 -s file    Set a custom web sources list file. [Use: file path or http url.]
@@ -221,64 +230,64 @@ EOF
 # Function to display the manual in the form of an inbuilt man page. [--help]
 Display_Help_Man_Page()
 {
-    # Create a temp file to store the man page here document.
-    local getip_man_page_temp_file
-    getip_man_page_temp_file=$(mktemp -q -t "getip.tmp.XXXXXX")
+    # Output a here document of the fetchip man page to a temp file.
+
+    local man_page_temp_file
+    man_page_temp_file=$(mktemp -q -t "$MKTEMP_TEMPLATE")
     local make_temp_file_ret_val=$?
 
     if [ "$make_temp_file_ret_val" -ne "0" ]; then
         Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
     fi
 
-# Output a here document of the getip man page to the temp file.
 # Here documents don't like indentation, keep to the hard left.
 
-cat >>$getip_man_page_temp_file <<EOF
-.\" Manpage for getip.
+cat >>$man_page_temp_file <<EOF
+.\" Manpage for fetchip.
 
-.TH GETIP 1 "04 Nov 2015" "1.0.1" "GETIP VERSION 1.0.1"
+.TH FETCHIP 1 "10 Nov 2015" "1.0.1" "FETCHIP VERSION 1.0.1"
 
 .SH NAME
 
-getip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
+fetchip retrieves the wide area network (WAN) IP address; this is sometimes referred to as the external IP address or the public IP address. It gets IPv4 addresses only and not IPv6 addresses.
 
 .SH SYNOPSIS
-\fBgetip\fR [OPTION...]
+\fBfetchip\fR [OPTION...]
 
 .SH DESCRIPTION
 
-\fBgetip\fR is a \fBBASH\fR script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBSTDOUT\fR). \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
+\fBfetchip\fR is a BASH script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBstdout\fR). \fBfetchip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
 
 From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the web page, or an IP-address-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot these so they can be ignored). In such cases, or in other similar ones, an IP address fetching script could provide an incorrect IP address.
 
-To prevent an incorrect IP address being provided \fBgetip\fR always retrieves the IP address from multiple sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBgetip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
+To prevent an incorrect IP address being provided \fBfetchip\fR always retrieves the IP address from multiple web sources (2 by default) and compares them to make sure they are the same. In the unusual cases that they differ \fBfetchip\fR will restart the retrieval procedure and use different web sources. The number of sources used for verification can be set on the command line using the \fB-n\fR option, the range of values is >=2 and <=5 but the default of 2 is considered to be sufficient due to the unlikelihood of 2 web sources both providing the same incorrect IP address. Very cautious users might want to use 3 sources, while 5 would indicate a state of paranoia. Clearly if more sources are used then the IP address retrieval will take longer (on average), 1 second per source on a low latency network is not an unreasonable guesstimate.
 
-\fBgetip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBgetip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBgetip\fR. An alternative web sources list can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The urls in a web sources list file must each be on a separate line and any line which does not begin with 'http' will be ignored ('https' is fine), so avoid leading whitespace. The minimum number of urls needed for a valid list is 10. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
+\fBfetchip\fR uses a list of web sources held in a file on the script's \fBGithub\fR page. Each web source is a web page that would display the IP address if viewed in a web browser. \fBfetchip\fR downloads the web sources list file each time the script is run so that users are always using the most up-to-date list, even if they are not using the most recent version of \fBfetchip\fR. An alternative web sources list file can be set on the command line using the \fB-s\fR option which can take a local file path or http url. The http urls in a web sources list file must each be on a separate line with no additional whitespace, any line which does not begin with a http url will be ignored. The minimum number of urls needed for a valid list is 10. See the description of the \fB-u\fR option (Test Url mode), if you wish to create a custom web sources list file.
 
-The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally but clearly the most up-to-date list will not be used each time the script is run, and the quality of the list will degrade over time.
+The \fB-s\fR option can also be used to specify a copy of the web sources list file which has been downloaded and saved locally, but clearly the most up-to-date list will not be used each time the script is run, and the reliability of such a list will degrade over time.
 
 The web sources list is randomized every time the script is run. This is so that undue pressure is not placed on servers at the top of the list. The randomizing process is done very quickly and does not have a significant impact on the running time of the script.
 
-\fBgetip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which can accept timeouts in the fractions of a second. Since \fBgetip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBgetip\fR simply moves on to the next one. In Get IP mode the default timeout for each web source is 1.5 seconds. If modifying this a sensible range would be 0.75 to 3 seconds but tweaking the timeout for your internet connection's latency (speed of response) can result in improved performance (on average).
+\fBfetchip\fR implements its own timeout facility; it does not rely on the timeout options of \fBwget\fR or \fBcurl\fR, neither of which can accept timeouts in the fractions of a second. Since \fBfetchip\fR uses many web sources a relatively low timeout is used for each web source, this can be set with the \fB-t\fR option. If one web source fails to respond quickly then \fBfetchip\fR simply moves on to the next one. The default timeout for each web source is 1.5 seconds. If modifying this a sensible range would be 0.75 to 3 seconds but tweaking the timeout for your internet connection's latency (speed of response) can result in improved performance (on average).
 
-New users are advised to try the \fB-v\fR verbose option to see the current settings, the number of urls in the web sources list, etc., and (more importantly) to see a comprehensive representation of what the script is doing while it runs. This will help new users gain confidence in \fBgetip's\fR reliability. Running it repeatedly with different timeout values can help users fine tune the best timeout for them to use. e.g. \fB-v\fR \fB-t\fR \fB0.75\fR ... \fB-v\fR \fB-t\fR \fB3\fR. Once a value has been decided on an alias can be created which uses that timeout so it is always used, advanced users can change the value of the variable 'TIMEOUT_DEFAULT_GET_IP_MODE' in the script itself if they prefer.
+New users are advised to try the \fB-v\fR verbose option to see the settings, the number of urls in the web sources list file, etc., and (more importantly) to see a comprehensive representation of what the script is doing while it runs. This will help new users gain confidence in \fBfetchip's\fR reliability. Running it repeatedly with different timeout values can help users fine tune the best timeout for them to use. e.g. \fB-v\fR \fB-t\fR \fB0.75\fR ... \fB-v\fR \fB-t\fR \fB3\fR. Once a value has been decided on an alias can be created which always uses that timeout.
 
-The \fBgetip\fR script retrieves \fBIPv4\fR addresses only and not \fBIPv6\fR addresses.
+The \fBfetchip\fR script retrieves IPv4 addresses only and not IPv6 addresses.
 
-All output is printed to \fBSTDOUT\fR except for error messages which are printed to \fBSTDERR\fR.
+All output is printed to \fBstdout\fR except for error messages which are printed to \fBstderr\fR.
 
 .SH REQUIREMENTS
 
-\fBgetip\fR is a \fBBASH\fR script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern \fBUNIX\fR like systems come with \fBwget\fR pre-installed. \fBwget\fR and \fBcurl\fR are both command line programs which can download web pages from the internet. \fBgetip\fR works very well with them both but, in lots of tests on \fBDebian\fR and \fBLinux\fR \fBMint\fR, \fBwget\fR was consistently just a little faster (approx. 200 milliseconds with the default options and using the same web sources). If both \fBwget\fR and \fBcurl\fR are installed \fBgetip\fR will use \fBwget\fR by default, if only one of them is installed then that one will be automatically used. See: \fB\-p\fR \fBdownload_program\fR
+\fBfetchip\fR is a BASH script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern UNIX-like operating systems come with wget pre-installed. wget and curl are both command line programs which can download web pages from the internet. \fBfetchip\fR works very well with them both but, in lots of tests on Debian and Linux Mint, wget was consistently just a little faster. If both wget and curl are installed \fBfetchip\fR will use wget by default, if only one of them is installed then that one will be automatically used. See: \fB\-p\fR \fBdownload_program\fR
 
 .SH OPTIONS
 .BR
-In typical usage no options are necessary.
+In typical usage no options are needed; \fB\-f\fR is the default.
 .BR
 
 .TP
-\fB\-g\fR
-Get IP mode (default); print the WAN IP address. This will retrieve the IP address from multiple web sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-g\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
+\fB\-f\fR
+Fetch IP mode (default); print the WAN IP address. This will retrieve the IP address from multiple web sources and check that they are all the same. The default number of sources to use for IP address verification is 2. This is the default mode so \fB\-f\fR is optional. See: \fB\-n\fR \fBnum_sources\fR
 
 .TP
 \fB\-c\fR
@@ -286,19 +295,19 @@ Check mode; print a table containing the url of each web source in the list, the
 
 .TP
 \fB\-u\fR \fBurl\fR
-Test Url mode; tests an url for possible inclusion in the web sources list. It will print a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. [This option is used during web sources list maintenance and is not needed by the average user.]
+Test Url mode; tests a http url for possible inclusion in the web sources list. It will print a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. [This option is used during web sources list maintenance and is not needed by the average user.]
 
 .TP
 \fB\-n\fR \fBnum_web_sources\fR
-Sets the Number of web sources to use for IP address verification in Get IP mode; the allowed range of values is >=2 and <=5. The default value is 2. See: \fBDESCRIPTION\fR
+Sets the number of web sources to use for IP address verification. The allowed range of values is >=2 and <=5. The default value is 2. See: \fBDESCRIPTION\fR
 
 .TP
 \fB\-t\fR \fBnum_seconds\fR
-Sets the Timeout for each web source; when a web source gives no response or is slow to respond \fBgetip\fR moves on to the next source. \fB\-t\fR sets the timeout in seconds for how long to give each source to complete. Real numbers are permitted. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB2\fR. The allowed range of seconds is >=0.2 and <=15 but these are extremes. See: \fBDESCRIPTION\fR
+Sets the timeout for each web source; when a web source gives no response or is slow to respond \fBfetchip\fR moves on to the next source. \fB\-t\fR sets the timeout in seconds for how long to give each source to complete. Real numbers are permitted. The allowed range of seconds is >=0.2 and <=15 but these are extremes. e.g. \fB-t\fR \fB0.75\fR, \fB-t\fR \fB1.5\fR, \fB-t\fR \fB3\fR. See: \fBDESCRIPTION\fR
 
 The default timeouts are dependant on mode, they are:
 .br
-Get IP mode    -  1.5 seconds
+Fetch IP mode  -  1.5 seconds
 .br
 Check mode     -  10 seconds
 .br
@@ -308,19 +317,19 @@ The Check and Test Url mode timeouts are intentionally high. They are intended t
 
 .TP
 \fB\-p\fR \fBdownload_program\fR \fB[wget | curl]\fR
-Sets the Download program; \fBgetip\fR can use either \fBwget\fR or \fBcurl\fR to download each web source and the web sources list file. Use either: \fB-p\fR \fBwget\fR or \fB-p\fR \fBcurl\fR. \fBwget\fR is slightly quicker on tested systems and so is used by default if both programs are installed. Note that if only \fBcurl\fR is installed then that will be used by default. See: \fBREQUIREMENTS\fR
+Sets the download program; either wget or curl can be used to download each web source and the web sources list file. Use either: \fB-p\fR \fBwget\fR or \fB-p\fR \fBcurl\fR. wget is slightly quicker on tested systems and so is used by default if both programs are installed. Note that if only curl is installed then that will be used by default. See: \fBREQUIREMENTS\fR
 
 .TP
 \fB\-s\fR \fBweb_sources_list\fR
-Sets a custom the web Sources list file; \fBgetip\fR can use a custom web sources list file or a local copy. Either a file path or http url to the file may be used. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
+Sets a custom web sources list file; \fBfetchip\fR can use a custom web sources list file or a local copy. Either a file path or a http url to the file may be used. e.g. \fB-s\fR \fB/path/to/list\fR or \fB-s\fR \fBhttp://url.to/list\fR. See: \fBDESCRIPTION\fR
 
 .TP
 \fB\-v\fR
-Verbose; print detailed information while \fBgetip\fR runs.
+Verbose; print detailed information while the script runs.
 
 .TP
 \fB\-b\fR
-Bare output; prints only the IP address on success or \fBFAILED\fR if the script fails to get the IP address from the required number of sources. Error messages will still be printed, redirect \fBSTDERR\fR to \fB/dev/null\fR if they are not wanted. This option exists primarily so that \fBgetip\fR can be used easily from within other scripts. 
+Bare output; prints only the IP address on success or \fBFAILED\fR if the script fails to get the IP address from the required number of sources. Error messages will still be printed, redirect \fBstderr\fR to \fB/dev/null\fR if they are not wanted. This option exists primarily so that \fBfetchip\fR can be used easily from within other scripts. 
 
 .TP
 \fB\-h\fR
@@ -335,13 +344,13 @@ Help; display the full manual in the form of a built-in man page.
 Version; print the version number.
 
 .SH EXIT STATUS
-\fBgetip\fR returns 0 on success, and non-zero on failure.
+\fBfetchip\fR returns 0 on success, and non-zero on failure.
 .LP
 \fB0\fR   - Success
 .br
-\fB101\fR - Command line argument invalid.
+\fB101\fR - Command line option unknown.
 .br
-\fB102\fR - Command line option invalid.
+\fB102\fR - Command line argument invalid.
 .br
 \fB103\fR - Command line argument missing.
 .br
@@ -349,11 +358,11 @@ Version; print the version number.
 .br
 \fB105\fR - Temp file creation failed.
 .br
-\fB106\fR - Web source list file is not a file or url.
+\fB106\fR - Web sources list file is not a file or url.
 .br
-\fB107\fR - Reading the web source list file failed.
+\fB107\fR - Reading the web sources list file failed.
 .br
-\fB108\fR - Not enough urls in the web source list file.
+\fB108\fR - Not enough urls in the web sources list file.
 .br
 \fB109\fR - Failed to get the IP address.
 .br
@@ -370,26 +379,30 @@ No known bugs. Please submit bug reports on the homepage.
 <mattst@i-dig.info>
 
 .SH HOMEPAGE
-https://github.com/mattst/getip
+https://github.com/mattst/fetchip
 
 .SH CONTRIBUTE
-If you have a web server and would like to allow it to be used as a source in the web sources list then please see the homepage for details. It needs only a 2 line PHP program and would generate very little bandwidth - if lots of people did so it would be very helpful to the project.
+If you have a web server and would like to allow it to be used as a source in the web sources list file then please see the homepage for details. It needs only a 2 line PHP program and would generate very little bandwidth - if lots of people did so it would be helpful to the project.
 .LP
-Please feel free to submit new IP address providing web pages to be added to the web sources list. You should first check they are not already in the latest web source list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
+Please feel free to submit new IP address providing web pages to be added to the web sources list. You should first check they are not already in the latest web sources list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
 
 .SH COPYRIGHT
-Copyright <mattst@i-dig.info>, GNU General Public License v.3 or later. GPLv3+ http://gnu.org/licenses/gpl.html
+Copyright <mattst@i-dig.info>
+.br
+GNU General Public License v.3
+.br
+GPLv3 http://gnu.org/licenses/gpl.html
 EOF
 
     # Display the man page and then delete it.
 
-    man "$getip_man_page_temp_file"
+    man "$man_page_temp_file"
 
-    if [ -f "$getip_man_page_temp_file" ]; then rm "$getip_man_page_temp_file"; fi
+    if [ -f "$man_page_temp_file" ]; then rm "$man_page_temp_file"; fi
 }
 
 
-# Function to output error messages to STDERR and then exit the script.
+# Function to display error messages and then exit the script.
 Exit_With_Error_Message()
 {
     local error_num="$1"
@@ -399,14 +412,21 @@ Exit_With_Error_Message()
 
     # Output the appropriate error message to STDERR.
 
-    if [ "$error_num" = "$EXIT_ERR_ARG_INVALID" ]; then
+    if [ "$error_num" = "$EXIT_ERR_OPTION_UNKNOWN" ]; then
+        printf "\n%s\n" "An unknown option has been entered." >&2
+
+    elif [ "$error_num" = "$EXIT_ERR_ARG_INVALID" ]; then
         printf "\n%s\n" "The argument given to the -$additional_info option is invalid." >&2
 
     elif [ "$error_num" = "$EXIT_ERR_ARG_MISSING" ]; then
         printf "\n%s\n" "The argument is missing from the -$additional_info option." >&2
 
-    elif [ "$error_num" = "$EXIT_ERR_OPTION_INVALID" ]; then
-        printf "\n%s\n" "An invalid option has been entered." >&2
+    elif [ "$error_num" = "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" ]; then
+        if [ "$additional_info" = "wget+curl" ]; then
+            printf "\n%s\n" "Neither wget nor curl are installed on your system." >&2
+        else
+            printf "\n%s\n" "$additional_info is not installed on your system." >&2
+        fi
 
     elif [ "$error_num" = "$EXIT_ERR_TEMP_FILE_CREATION_FAILED" ]; then
         printf "\n%s\n" "Unable to create a temp file using mktemp." >&2
@@ -424,17 +444,9 @@ Exit_With_Error_Message()
         printf "\n%s\n" "[Note: HTTP redirections can cause this error to" >&2
         printf "%s\n" "be displayed when the domain/url does not exist.]" >&2
 
-    elif [ "$error_num" = "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS" ]; then
-        printf "\n%s\n" "getip failed to get the IP address." >&2
+    elif [ "$error_num" = "$EXIT_ERR_FAILED_TO_FETCH_IP_ADDRESS" ]; then
+        printf "\n%s\n" "Unable to get the IP address." >&2
 
-    elif [ "$error_num" = "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" ]; then
-        if [ "$additional_info" = "wget" ]; then
-            printf "\n%s\n" "wget is not installed on your system." >&2
-        elif [ "$additional_info" = "curl" ]; then
-            printf "\n%s\n" "curl is not installed on your system." >&2
-        elif [ "$additional_info" = "wget+curl" ]; then
-            printf "\n%s\n" "Neither wget nor curl are installed on your system." >&2
-        fi
     fi
 
     printf "\n%s\n" "-h      :  brief help (cheat sheet)." >&2
@@ -470,6 +482,7 @@ Read_Source_Url_List()
             web_sources_type="$WEB_SOURCES_TYPE_FILE"
             web_sources_list_file="$web_sources_list_user_set"
             web_sources_list_location_display_text="$web_sources_list_user_set"
+
         else
             web_sources_type="$WEB_SOURCES_TYPE_URL"
             web_sources_list_url="$web_sources_list_user_set"
@@ -481,7 +494,7 @@ Read_Source_Url_List()
     if [ "$web_sources_type" = "$WEB_SOURCES_TYPE_URL" ]; then
 
         local web_sources_temp_file
-        web_sources_temp_file=$(mktemp -q -t "getip.tmp.XXXXXX")
+        web_sources_temp_file=$(mktemp -q -t "$MKTEMP_TEMPLATE")
         local make_temp_file_ret_val=$?
 
         if [ "$make_temp_file_ret_val" -ne "0" ]; then
@@ -494,14 +507,16 @@ Read_Source_Url_List()
 
         if [ "$download_program" = "$DOWNLOAD_PROGRAM_WGET" ]; then
 
-            wget --quiet --tries=1 --user-agent="$USER_AGENT" --output-document=- \
-                                        "$web_sources_list_url" > "$web_sources_temp_file"
+            wget --quiet --tries=1 --timeout="$TIMEOUT_WEB_SOURCES_LIST" --output-document=- \
+                    --user-agent="$USER_AGENT" "$web_sources_list_url" > "$web_sources_temp_file"
+
             download_web_sources_list_ret_val=$?
 
         elif [ "$download_program" = "$DOWNLOAD_PROGRAM_CURL" ]; then
 
-            curl --silent --fail --user-agent "$USER_AGENT" "$web_sources_list_url" \
-                                                                > "$web_sources_temp_file"
+            curl --silent --max-time "$TIMEOUT_WEB_SOURCES_LIST" --fail \
+                    --user-agent "$USER_AGENT" "$web_sources_list_url" > "$web_sources_temp_file"
+
             download_web_sources_list_ret_val=$?
         fi
 
@@ -522,7 +537,7 @@ Read_Source_Url_List()
 
         # Store only the http url lines, ignore anything else.
 
-        if [[ "$line" =~ $REGEX_HTTP_URL ]]; then
+        if [[ "$line" =~ $HTTP_URL_REGEX ]]; then
             web_sources[$index]="$line"
             let 'index = index + 1'
         fi
@@ -596,7 +611,7 @@ Randomize_Url_List()
 }
 
 
-# Function to extract valid IP addresses from the file given in the function arg.
+# Function to extract valid IP addresses from the file given in the function's arg.
 Extract_IP_Addresses_From_File()
 {
     local web_page_source_file="$1"
@@ -652,7 +667,7 @@ Extract_IP_Addresses_From_File()
         }
     }
     END {
-        # Define some IP address related constants.
+        # IP address constants.
         ip_range_min = 0;
         ip_range_max = 255;
         ip_num_segments = 4;
@@ -685,43 +700,32 @@ Extract_IP_Addresses_From_File()
 
 # Function that retrieves the web source's content and returns all unique IP addresses in it. The
 # function provides an accurate timeout facility; neither wget nor curl provide an accurate timeout
-# in the fractions of a second. Since getip uses so many web sources a low timeout is used, if one
+# in the fractions of a second. Since fetchip uses many web sources a low timeout is used, if one
 # source fails to return quickly then the next source is tried. With this methodology a reliable and
 # accurate timeout is required, this function provides it.
-Get_IP_Address_From_Web_Source()
+Fetch_IP_Address_From_Web_Source()
 {
     # The url to download and search for IP addresses.
     local web_source_url="$1"
 
     # Temp file to store the page source of $web_source_url.
     local web_source_temp_file
-    web_source_temp_file=$(mktemp -q -t "getip.tmp.XXXXXX")
+    web_source_temp_file=$(mktemp -q -t "$MKTEMP_TEMPLATE")
     local make_temp_file_ret_val=$?
 
     # Temp file creation errors must be handled differently here. The function is called using the
     # $() construct which means a subshell will be created for it and any exit call inside the
     # function will exit only the subshell and not the script. To get around this the return value
-    # of Get_IP_Address_From_Web_Source() is checked to handle exiting the script if mktemp failed.
+    # of this function is checked to handle exiting the script if mktemp failed.
     if [ "$make_temp_file_ret_val" -ne "0" ]; then
-        return "$GET_IP_TEMP_FILE_CREATION_FAILED"
+        return "$FETCH_IP_TEMP_FILE_CREATION_FAILED"
     fi
 
+    # Download the web page's source placing it in the temp file and storing the process's id.
+    # The process is forked (the trailing '&') to help facilitate the timeout procedure.
+
     # Note: %s seconds, %N nanoseconds.
-    local timeout_start=$(date +%s.%N)
-
-    # Download the web page's source placing it in the temp file and store the process's id.
-    # The process is forked (the trailing '&') to facilitate the timeout procedure.
-
-    # Use a fail safe timeout. Occasionally wget and curl will not terminate in a timely manner
-    # after receiving the SIGTERM request from kill. I have been unable to establish exactly why.
-    # The default timeout for wget is 15 mins, for curl it is 5 mins, these are too high for this
-    # script, so a fail safe timeout has been added to make sure the download program's processes
-    # do not persist for long when the download programs do not terminate quickly after the kill
-    # command. This is a precaution for what I believe to be relatively infrequent occurrences.
-
-    # wget's --timeout option and curl's --max-time option both take a timeout in seconds.
-    local timeout_fail_safe
-    let 'timeout_fail_safe = TIMEOUT_MAX + 5'
+    local time_start=$(date +%s.%N)
 
     local download_process_id
 
@@ -739,8 +743,8 @@ Get_IP_Address_From_Web_Source()
     fi
 
     # Even if kill has both stdout and stderr redirected to /dev/null the death of the process is
-    # still displayed. Using disown to remove the job from the shell's active jobs table stops this
-    # from happening so that there are no unsightly terminal messages.
+    # still displayed in the shell. Using disown to remove the job from the shell's active jobs
+    # table stops this from happening so that there are no unsightly terminal messages.
     disown "$download_process_id"
 
     # Handle the timeout facility for the web page source download.
@@ -749,9 +753,9 @@ Get_IP_Address_From_Web_Source()
     local is_download_timed_out="FALSE"
 
     local process_grep_ret_val
-    local timeout_now
+    local time_now
     local bc_exp_timeout
-    local bc_exp_timeout_ret_val
+    local bc_exp_timeout_val
 
     while [ "$is_download_done" = "FALSE" -a "$is_download_timed_out" = "FALSE" ]; do
 
@@ -765,14 +769,16 @@ Get_IP_Address_From_Web_Source()
 
         # If the url download process has not finished (grep did match the process id).
         else
-            timeout_now=$(date +%s.%N)
+            time_now=$(date +%s.%N)
 
             # Use bc to check if the timeout has been exceeded.
-            bc_exp_timeout="if (($timeout_now - $timeout_start) > $timeout) 1 else 0"
-            bc_exp_timeout_ret_val=$(echo "$bc_exp_timeout" | bc -l)
 
-            # The timeout has been exceeded.
-            if [ "$bc_exp_timeout_ret_val" -eq "1" ]; then
+            # Do not use 'else' in the bc expression, it is not in POSIX bc (only in GNU bc).
+            bc_exp_timeout="if (($time_now - $time_start) > $timeout) 1"
+            bc_exp_timeout_val=$(echo "$bc_exp_timeout" | bc -l)
+
+            # The timeout has been exceeded (do not use -eq, most of the time it will be "").
+            if [ "$bc_exp_timeout_val" = "1" ]; then
                 is_download_timed_out="TRUE"
             fi
         fi
@@ -799,36 +805,32 @@ Get_IP_Address_From_Web_Source()
         # Success: if exactly 1, then that is considered to be the user's IP address.
         if [ "$ip_address_list_len" -eq "1" ]; then
             echo "$ip_address_list"
-            return "$GET_IP_SINGLE_VALID_IP"
+            return "$FETCH_IP_SINGLE_VALID_IP"
 
         # Failure: if less than 1, then no valid IP addresses were found.
         elif [ "$ip_address_list_len" -lt "1" ]; then
-            return "$GET_IP_NO_VALID_IP"
+            return "$FETCH_IP_NO_VALID_IP"
 
         # Failure: if more than 1 there is no way to tell which of them is the user's IP address.
         elif [ "$ip_address_list_len" -gt "1" ]; then
             echo "$ip_address_list"
-            return "$GET_IP_MULTIPLE_VALID_IP"
+            return "$FETCH_IP_MULTIPLE_VALID_IP"
         fi
     fi
 
-    # The url download process must have timed out, kill the process using SIGTERM which will allow
-    # the program to clean up after itself. DO NOT USE SIGKILL; wget/curl might leave sockets open,
-    # temp files, child processes, and such like.
+    # The url download process must have timed out. No need to check for it, the code below can not
+    # be reached unless it did.
 
-    # Since the process being killed has been disowned (removed from the shell's active jobs table)
-    # the redirect of stdout and stderr to /dev/null may be unnecessary to hide the kill messages,
-    # it is not necessary on the Linux systems used to test the script, other OSes?
+    # Kill the process using SIGTERM which will allow the program to clean up after itself.
+    # DO NOT USE SIGKILL; wget/curl might leave sockets open, child processes, temp files.
 
-    if [ "$is_download_timed_out" = "TRUE" ]; then
-        kill -SIGTERM "$download_process_id" > /dev/null 2>&1
-    fi
+    kill -SIGTERM "$download_process_id" > /dev/null 2>&1
 
     # Delete the temp file.
     if [ -f "$web_source_temp_file" ]; then rm "$web_source_temp_file"; fi
 
     # Failure: the download timed out.
-    return "$GET_IP_SERVER_TIMED_OUT"
+    return "$FETCH_IP_SERVER_TIMED_OUT"
 }
 
 
@@ -845,7 +847,6 @@ Verify_IP_Address_List()
 
     for ip in "${ip_addresses[@]}"; do
 
-        # If the current ip address is not the same as the first one.
         if [ "$ip" != "$ip_first_element" ]; then
             return "$VERIFY_IP_ADDRESS_LIST_FAILURE"
         fi
@@ -856,15 +857,14 @@ Verify_IP_Address_List()
 }
 
 
-# Function that adds information to the statistics variables (check mode only).
+# Function that adds data to the statistics variables (check mode only).
 Add_To_Stats()
 {
     local status="$1"
     local ip_address_for_stats="$2"
     local ip_retrieval_time_for_stats="$3"
 
-    # The IP address is valid.
-    if [ "$status" = "$GET_IP_SINGLE_VALID_IP" ]; then
+    if [ "$status" = "$FETCH_IP_SINGLE_VALID_IP" ]; then
 
         # Add the IP address and the time taken to the stats lists.
         # Keep the trailing spaces, they are serving as delimiters.
@@ -873,7 +873,6 @@ Add_To_Stats()
         stats_ip_retrieval_times_list+="$ip_retrieval_time_for_stats "
         let "stats_ip_valid_total = stats_ip_valid_total + 1"
 
-    # The IP address is not valid.
     else
         let "stats_ip_invalid_total = stats_ip_invalid_total + 1"
     fi
@@ -885,7 +884,7 @@ Find_Fastest_Time()
 {
     # Use awk to find the fastest time.
 
-    local awk_fastest='{ if (NR == 1) fastest = $1; if ($1 < fastest) fastest = $1; } \
+    local awk_fastest='{ if (NR == 1) fastest = $1; if ($1 < fastest) fastest = $1; }
                    END { printf("%.3f", fastest) }'
 
     local fastest=$(echo "$stats_ip_retrieval_times_list" | tr " " "\n" | awk "$awk_fastest" )
@@ -899,7 +898,7 @@ Find_Slowest_Time()
 {
     # Use awk to find the slowest time.
 
-    local awk_slowest='{ if (NR == 1) slowest = $1; if ($1 > slowest) slowest = $1; } \
+    local awk_slowest='{ if (NR == 1) slowest = $1; if ($1 > slowest) slowest = $1; }
                    END { printf("%.3f", slowest) }'
 
     local slowest=$(echo "$stats_ip_retrieval_times_list" | tr " " "\n" | awk "$awk_slowest" )
@@ -913,7 +912,7 @@ Find_Mean_Average_Time()
 {
     # Use awk to find the mean average.
 
-    local awk_mean='{ total += $1; num += 1; } \
+    local awk_mean='{ total += $1; num += 1; }
                 END { mean = total / num; printf("%.3f", mean) }'
 
     local mean=$(echo "$stats_ip_retrieval_times_list" | tr " " "\n" | awk "$awk_mean")
@@ -941,7 +940,7 @@ Find_Median_Average_Time()
         let "mid_item_2 = mid_item_1 + 1"
 
         # Awk program to print the median value (the mean of the 2 middle rows).
-        local awk_median='{ if (NR == mid_row_1) med_1 = $1; if (NR == mid_row_2) med_2 = $1; } \
+        local awk_median='{ if (NR == mid_row_1) med_1 = $1; if (NR == mid_row_2) med_2 = $1; }
                       END { median = (med_1 + med_2) / 2; printf("%.3f", median) }'
 
         local median=$(echo "$stats_ip_retrieval_times_list" | tr " " "\n" | sort -n |
@@ -1035,30 +1034,148 @@ Display_Stats()
         # This awk code uses a useful aspect of awk where any number or string in awk may be used
         # as an array index. In this case the IP addresses piped to awk will serve as the array
         # indexes for the count_ip[] array; same as used in Extract_IP_Addresses_From_File().
-        local awk_ip_count='{ count_ip[$1]++ } END { for (ip in count_ip) \
-                              printf("%-25s %d\n", ip, count_ip[ip]); }'
+        local awk_ip_count='{ count_ip[$1]++ } END { for (ip in count_ip)
+                                                        printf("%-25s %d\n", ip, count_ip[ip]); }'
 
         printf "%s\n\n" "Unique IP Addresses List:"
-        printf "%s\n" "IP Address         Num Occurrences"
+        printf "%-18s %s\n" "IP Address" "Num Occurrences"
         printf "%s\n" "----------------------------------"
+        # Use sort -k to sort by the number of occurrences (column number 2), low to high.
         echo "$stats_ip_address_list" | tr " " "\n" | awk "$awk_ip_count" | sort -n -k 2,2
         printf "%s\n" "----------------------------------"
     fi
 }
 
 
-# Function which controls IP address retrieval and verification.
-Handle_Get_IP_Mode()
+# Function which controls setting the timeouts appropriately.
+Set_Timeouts()
+{
+    # If the user set the timeout use that, otherwise use the mode's default timeout.
+
+    if [ "$timeout_user_set" != "FALSE" ]; then
+        timeout="$timeout_user_set"
+
+    else
+        if [ "$operation_mode" = "$FETCH_IP_MODE" ]; then
+            timeout="$TIMEOUT_DEFAULT_FETCH_IP_MODE"
+
+        elif [ "$operation_mode" = "$CHECK_MODE" ]; then
+            timeout="$TIMEOUT_DEFAULT_CHECK_MODE"
+
+        elif [ "$operation_mode" = "$TEST_URL_MODE" ]; then
+            timeout="$TIMEOUT_DEFAULT_TEST_URL_MODE"
+        fi
+    fi
+
+    # A fail safe timeout is used in addition to the timeout handling implemented by the function
+    # Fetch_IP_Address_From_Web_Source().
+
+    # If a download fails to complete within the time specified by $timeout its process will be
+    # sent the SIGTERM signal by kill. Occasionally the download program will not terminate in a
+    # timely manner after receiving the SIGTERM request. The default timeout for wget is 15 mins,
+    # for curl it is 5 mins, so processes the script created and no longer wants could continue
+    # for quite some time. The fail safe timeout is given to wget or curl to ensure that processes
+    # do not persist for long if they do not terminate quickly after receiving the SIGTERM signal.
+    # This is just a precautionary measure to handle relatively infrequent occurrences.
+
+    # Use awk to round up $timeout (if it's a float) and then add the fail safe timeout offset.
+    # This makes sure that the fail safe timeout is always at least $timeout_fail_safe_offset
+    # seconds longer than $timeout.
+
+    awk_timeout_fail_safe='
+    {
+        timeout = $1;
+        timeout_offset = $2;
+        timeout_floor = int(timeout);
+
+        if (timeout == timeout_floor)
+            timeout_fail_safe = timeout + timeout_offset;
+        else
+            timeout_fail_safe = timeout_floor + 1 + timeout_offset;
+
+        printf("%d", timeout_fail_safe);
+    }'
+
+    timeout_fail_safe=$(echo "$timeout $timeout_fail_safe_offset" | awk "$awk_timeout_fail_safe")
+}
+
+
+# Function which controls setting which download program should be used.
+Set_Download_Program()
+{
+    # Check whether wget and curl are installed, at least one is required.
+    hash wget > /dev/null 2>&1
+    is_wget_installed=$?
+
+    hash curl > /dev/null 2>&1
+    is_curl_installed=$?
+
+    # If neither wget nor curl are installed, display error and exit.
+    if [ "$is_wget_installed" -ne "0" -a "$is_curl_installed" -ne "0" ]; then
+        Exit_With_Error_Message "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" "wget+curl"
+    fi
+
+    # If the user has NOT set which download program to use.
+    if [ "$download_program_user_set" = "FALSE" ]; then
+
+        # If both wget and curl are installed, use the default.
+        if [ "$is_wget_installed" -eq "0" -a "$is_curl_installed" -eq "0" ]; then
+            download_program="$DOWNLOAD_PROGRAM_DEFAULT"
+
+        # If only wget is installed, use that.
+        elif [ "$is_wget_installed" -eq "0" -a "$is_curl_installed" -ne "0" ]; then
+            download_program="$DOWNLOAD_PROGRAM_WGET"
+
+        # If only curl is installed, use that.
+        elif [ "$is_curl_installed" -eq "0" -a "$is_wget_installed" -ne "0" ]; then
+            download_program="$DOWNLOAD_PROGRAM_CURL"
+        fi
+
+    # If the user has set which download program to use.
+    else
+
+        # If the user set wget, use that if it is installed.
+        if [ "$download_program_user_set" = "$DOWNLOAD_PROGRAM_WGET" ]; then
+
+            if [ "$is_wget_installed" -eq "0" ]; then
+                download_program="$DOWNLOAD_PROGRAM_WGET"
+            else
+                Exit_With_Error_Message "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" "wget"
+            fi
+
+        # If the user set curl, use that if it is installed.
+        elif [ "$download_program_user_set" = "$DOWNLOAD_PROGRAM_CURL" ]; then
+
+            if [ "$is_curl_installed" -eq "0" ]; then
+                download_program="$DOWNLOAD_PROGRAM_CURL"
+            else
+                Exit_With_Error_Message "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" "curl"
+            fi
+        fi
+    fi
+
+    # Set the download program display text (used if being verbose).
+    if [ "$download_program" = "$DOWNLOAD_PROGRAM_WGET" ]; then
+        download_program_display_text="wget"
+
+    elif [ "$download_program" = "$DOWNLOAD_PROGRAM_CURL" ]; then
+        download_program_display_text="curl"
+    fi
+}
+
+
+# Function which controls IP address retrieval and verification in the default mode.
+Handle_Fetch_IP_Mode()
 {
     if [ "$verbose" = "TRUE" ]; then
         printf "\n%-25s %s\n" "Script Version:" "$VERSION"
-        printf "%-25s %s\n" "Operation Mode:" "Get IP Address"
+        printf "%-25s %s\n" "Operation Mode:" "Fetch IP Address"
         printf "%-25s %s\n" "Num Web Sources:" "$web_sources_verify_num (used for verification)"
         printf "%-25s %s\n" "Timeout (Seconds):" "$timeout"
         printf "%-25s %s\n" "Download Program:" "$download_program_display_text"
     fi
 
-    # Read the web sources list into $web_sources.
+    # Read the web sources list file into $web_sources.
     Read_Source_Url_List
 
     if [ "$verbose" = "TRUE" ]; then
@@ -1107,11 +1224,11 @@ Handle_Get_IP_Mode()
 
         # Get any IP addresses that are in the page source of $url.
         local ip_address
-        ip_address=$(Get_IP_Address_From_Web_Source "$url")
-        local get_ip_ret_val=$?
+        ip_address=$(Fetch_IP_Address_From_Web_Source "$url")
+        local fetch_ip_ret_val=$?
 
         # Failed due to a temp file creation error.
-        if [ "$get_ip_ret_val" -eq "$GET_IP_TEMP_FILE_CREATION_FAILED" ]; then
+        if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_TEMP_FILE_CREATION_FAILED" ]; then
             Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
         fi
 
@@ -1120,20 +1237,20 @@ Handle_Get_IP_Mode()
             local time_stop=$(date +%s.%N)
             local time_taken=$(printf "%.3F" $(echo "$time_stop - $time_start" | bc -l))
 
-            if [ "$get_ip_ret_val" -eq "$GET_IP_SINGLE_VALID_IP" ]; then
+            if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SINGLE_VALID_IP" ]; then
                 printf "%-25s %s\n" "Status:" "Success: A single valid IP address"
                 printf "%-25s %s\n" "IP Address:" "$ip_address"
 
-            elif [ "$get_ip_ret_val" -eq "$GET_IP_NO_VALID_IP" ]; then
+            elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_NO_VALID_IP" ]; then
                 printf "%-25s %s\n" "Status:" "Failure: No IP address"
 
-            elif [ "$get_ip_ret_val" -eq "$GET_IP_MULTIPLE_VALID_IP" ]; then
+            elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_MULTIPLE_VALID_IP" ]; then
                 printf "%-25s %s\n" "Status:" "Failure: More than one IP address"
                 # Create neat text for displaying the list of IP addresses.
                 local ip_list_csv=$(echo "$ip_address" | tr '\n' ',' | sed "s/,/, /g ; s/, $//g")
                 printf "%-25s %s\n" "IP Addresses:" "$ip_list_csv"
 
-            elif [ "$get_ip_ret_val" -eq "$GET_IP_SERVER_TIMED_OUT" ]; then
+            elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SERVER_TIMED_OUT" ]; then
                 printf "%-25s %s\n" "Status:" "Failure: Server timed out"
             fi
 
@@ -1141,7 +1258,7 @@ Handle_Get_IP_Mode()
         fi
 
         # If a single valid IP addresses was retrieved.
-        if [ "$get_ip_ret_val" -eq "$GET_IP_SINGLE_VALID_IP" ]; then
+        if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SINGLE_VALID_IP" ]; then
 
             # Add the IP address to the array, and increment the counter.
             ip_address_list[$ip_counter]="$ip_address"
@@ -1176,7 +1293,6 @@ Handle_Get_IP_Mode()
                         printf "%s\n" "[Verified using $web_sources_verify_num web sources.]"
                     fi
 
-                    # The successful exit point of the script in getip mode.
                     exit "$EXIT_SUCCESS"
                 fi
 
@@ -1196,15 +1312,14 @@ Handle_Get_IP_Mode()
 
     done  # End of loop through $web_sources loop.
 
-    # The exit point of the script in getip mode if the script failed to supply a valid IP address
-    # from the required number of sources.
+    # The exit point of the script if it failed.
 
     if [ "$bare_output" = "TRUE" ]; then
         printf "%s\n" "FAILED"
-        exit "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS"
+        exit "$EXIT_ERR_FAILED_TO_FETCH_IP_ADDRESS"
     fi
 
-    Exit_With_Error_Message "$EXIT_ERR_FAILED_TO_GET_IP_ADDRESS"
+    Exit_With_Error_Message "$EXIT_ERR_FAILED_TO_FETCH_IP_ADDRESS"
 }
 
 
@@ -1221,11 +1336,11 @@ Handle_Test_Url_Mode()
 
     # Store any IP addresses in the page source of $test_url_address.
     local ip_address
-    ip_address=$(Get_IP_Address_From_Web_Source "$test_url_address")
-    local get_ip_ret_val=$?
+    ip_address=$(Fetch_IP_Address_From_Web_Source "$test_url_address")
+    local fetch_ip_ret_val=$?
 
     # Failed due to temp file creation error.
-    if [ "$get_ip_ret_val" -eq "$GET_IP_TEMP_FILE_CREATION_FAILED" ]; then
+    if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_TEMP_FILE_CREATION_FAILED" ]; then
         Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
     fi
 
@@ -1236,14 +1351,14 @@ Handle_Test_Url_Mode()
 
     printf "%-22s %s\n" "Duration (Seconds):" "$time_taken"
 
-    if [ "$get_ip_ret_val" -eq "$GET_IP_SINGLE_VALID_IP" ]; then
+    if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SINGLE_VALID_IP" ]; then
         printf "%-22s %s\n" "Status:" "Success: A single valid IP address"
         printf "%-22s %s\n" "IP Address:" "$ip_address"
         printf "%-22s %s\n" "Conclusion:" "Url is suitable for using as a source."
         printf "%-22s %s\n" "" "[As long as the IP address is correct.]"
         exit "$EXIT_SUCCESS"
 
-    elif [ "$get_ip_ret_val" -eq "$GET_IP_MULTIPLE_VALID_IP" ]; then
+    elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_MULTIPLE_VALID_IP" ]; then
         printf "%-22s %s\n" "Status:" "Failure: More than one IP address"
         # Create neat text for displaying the list of IP addresses.
         local ip_list_csv=$(echo "$ip_address" | tr '\n' ',' | sed "s/,/, /g ; s/, $//g")
@@ -1251,21 +1366,21 @@ Handle_Test_Url_Mode()
         printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
         exit "$EXIT_ERR_TEST_URL_MULTIPLE_IP_ADDRESS"
 
-    elif [ "$get_ip_ret_val" -eq "$GET_IP_NO_VALID_IP" ]; then
+    elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_NO_VALID_IP" ]; then
         printf "%-22s %s\n" "Status:" "Failure: No IP address"
         printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source."
         exit "$EXIT_ERR_TEST_URL_NO_IP_ADDRESS"
 
-    elif [ "$get_ip_ret_val" -eq "$GET_IP_SERVER_TIMED_OUT" ]; then
+    elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SERVER_TIMED_OUT" ]; then
         printf "%-22s %s\n" "Status:" "Failure: Server timed out"
-        printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source unless the"
-        printf "%-22s %s\n" "" "timeout was set very low or its timing out was unusual."
-        exit "$EXIT_ERR_TEST_URL_TIMED_OUT"
+        printf "%-22s %s\n" "Conclusion:" "Url is NOT suitable for using as a source. [Unless the"
+        printf "%-22s %s\n" "" "timeout was set very low or its timing out was unusual.]"
+        exit "$EXIT_ERR_TEST_URL_SERVER_TIMED_OUT"
     fi
 }
 
 
-# Function which controls checking if the web pages in the source list are working or not.
+# Function which controls checking if all the web pages in the web sources list file are working.
 Handle_Check_Mode()
 {
     printf "\n%-24s %s\n" "Script Version:" "$VERSION"
@@ -1294,11 +1409,11 @@ Handle_Check_Mode()
 
         # Store any IP addresses in the page source of $url.
         local ip_address
-        ip_address=$(Get_IP_Address_From_Web_Source "$url")
-        local get_ip_ret_val=$?
+        ip_address=$(Fetch_IP_Address_From_Web_Source "$url")
+        local fetch_ip_ret_val=$?
 
         # Failed due to temp file creation error.
-        if [ "$get_ip_ret_val" -eq "$GET_IP_TEMP_FILE_CREATION_FAILED" ]; then
+        if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_TEMP_FILE_CREATION_FAILED" ]; then
             Exit_With_Error_Message "$EXIT_ERR_TEMP_FILE_CREATION_FAILED"
         fi
 
@@ -1306,20 +1421,20 @@ Handle_Check_Mode()
         local time_taken=$(printf "%.3F" $(echo "$time_stop - $time_start" | bc -l))
 
         # Add info. to the stored data for displaying at the end.
-        Add_To_Stats "$get_ip_ret_val" "$ip_address" "$time_taken"
+        Add_To_Stats "$fetch_ip_ret_val" "$ip_address" "$time_taken"
 
         # Neatly display the duration, source url, and the IP address or failure text.
 
         # If necessary set the failure display text.
         local web_source_failure_text
 
-        if [ "$get_ip_ret_val" -eq "$GET_IP_NO_VALID_IP" ]; then
+        if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_NO_VALID_IP" ]; then
             web_source_failure_text="NO IP ADDRESS"
 
-        elif [ "$get_ip_ret_val" -eq "$GET_IP_MULTIPLE_VALID_IP" ]; then
+        elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_MULTIPLE_VALID_IP" ]; then
             web_source_failure_text="MULTIPLE IP"
 
-        elif [ "$get_ip_ret_val" -eq "$GET_IP_SERVER_TIMED_OUT" ]; then
+        elif [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SERVER_TIMED_OUT" ]; then
             web_source_failure_text="URL TIMED OUT"
         fi
 
@@ -1330,7 +1445,7 @@ Handle_Check_Mode()
             url="$truncate_url..."
         fi
 
-        if [ "$get_ip_ret_val" -eq "$GET_IP_SINGLE_VALID_IP" ]; then
+        if [ "$fetch_ip_ret_val" -eq "$FETCH_IP_SINGLE_VALID_IP" ]; then
             printf "%-8s %-53s %s\n" "$time_taken" "$url" "$ip_address"
         else
             printf "%-8s %-53s %s\n" "$time_taken" "$url" "$web_source_failure_text"
@@ -1360,20 +1475,20 @@ for arg in "$@"; do
         exit "$EXIT_SUCCESS"
 
     elif [ "$arg" = "--version" -o "$arg" = "-version" -o "$arg" = "-ver" ]; then
-        printf "%s\n" "getip v. $VERSION"
+        printf "%s\n" "fetchip v. $VERSION"
         exit "$EXIT_SUCCESS"
     fi
 done
 
 # Process the command line arguments using getopts.
 
-while getopts ":bcghn:p:s:t:u:v" option; do
+while getopts ":bcfhn:p:s:t:u:v" option; do
 
     case $option in
 
-        g)
-            # -g : set the operation mode.
-            operation_mode="$GET_IP_MODE"
+        f)
+            # -f : set the operation mode.
+            operation_mode="$FETCH_IP_MODE"
             ;;
 
         c)
@@ -1388,13 +1503,12 @@ while getopts ":bcghn:p:s:t:u:v" option; do
 
             # Check that a http url was entered.
 
-            if [[ "$test_url_address_tmp" =~ $REGEX_HTTP_URL ]]; then
+            if [[ "$test_url_address_tmp" =~ $HTTP_URL_REGEX ]]; then
                 test_url_address="$test_url_address_tmp"
 
             else
                 Exit_With_Error_Message "$EXIT_ERR_ARG_INVALID" "u"
             fi
-
             ;;
 
         n)
@@ -1424,7 +1538,7 @@ while getopts ":bcghn:p:s:t:u:v" option; do
             # Use awk to check that an int or real number in the correct range was entered.
 
             # The "$1 + 0 == $1" bit is an awk hack to check for any kind of number (int or real).
-            awk_is_num_in_range='{ if ($1 + 0 == $1 && $1 >= to_min && $1 <= to_max) \
+            awk_is_num_in_range='{ if ($1 + 0 == $1 && $1 >= to_min && $1 <= to_max)
                                                         print "TRUE"; else print "FALSE"; }'
 
             awk_is_num_in_range_ret_val=$(echo "$timeout_user_set_tmp" | \
@@ -1467,7 +1581,7 @@ while getopts ":bcghn:p:s:t:u:v" option; do
             if [ -f "$web_sources_list_user_set_tmp" ]; then
                 web_sources_list_user_set="$web_sources_list_user_set_tmp"
 
-            elif [[ "$web_sources_list_user_set_tmp" =~ $REGEX_HTTP_URL ]]; then
+            elif [[ "$web_sources_list_user_set_tmp" =~ $HTTP_URL_REGEX ]]; then
                 web_sources_list_user_set="$web_sources_list_user_set_tmp"
 
             else
@@ -1492,8 +1606,8 @@ while getopts ":bcghn:p:s:t:u:v" option; do
             ;;
 
         \?)
-            # Invalid option : e.g. '-x'.
-            Exit_With_Error_Message "$EXIT_ERR_OPTION_INVALID"
+            # Invalid option : e.g. -x
+            Exit_With_Error_Message "$EXIT_ERR_OPTION_UNKNOWN"
             ;;
 
         :)
@@ -1512,96 +1626,24 @@ shift "$num_args_processed_by_getopts"
 num_args_remaining="$#"
 
 if [ "$num_args_remaining" -gt "0" ]; then
-    Exit_With_Error_Message "$EXIT_ERR_OPTION_INVALID"
+    Exit_With_Error_Message "$EXIT_ERR_OPTION_UNKNOWN"
 fi
 
-# Set the appropriate timeout.
-
-# If the user set the timeout use that, otherwise use the mode's default timeout.
-if [ "$timeout_user_set" != "FALSE" ]; then
-    timeout="$timeout_user_set"
-
-else
-    if [ "$operation_mode" = "$GET_IP_MODE" ]; then
-        timeout="$TIMEOUT_DEFAULT_GET_IP_MODE"
-
-    elif [ "$operation_mode" = "$CHECK_MODE" ]; then
-        timeout="$TIMEOUT_DEFAULT_CHECK_MODE"
-
-    elif [ "$operation_mode" = "$TEST_URL_MODE" ]; then
-        timeout="$TIMEOUT_DEFAULT_TEST_URL_MODE"
-    fi
-fi
-
-# If both verbose and bare output are set, then verbose trumps bare.
+# If both verbose and bare output are set then verbose trumps bare.
 if [ "$verbose" = "TRUE" -a "$bare_output" = "TRUE" ]; then
     bare_output="FALSE"
 fi
 
-# Determine whether to use wget or curl as the download program.
+# Set the timeouts appropriately.
+Set_Timeouts
 
-# Check whether wget and curl are installed, at least one is required.
-hash wget > /dev/null 2>&1
-is_wget_installed=$?
-
-hash curl > /dev/null 2>&1
-is_curl_installed=$?
-
-# If neither wget nor curl are installed, display error and exit.
-if [ "$is_wget_installed" -ne "0" -a "$is_curl_installed" -ne "0" ]; then
-    Exit_With_Error_Message "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" "wget+curl"
-fi
-
-# If the user has not set which download program to use.
-if [ "$download_program_user_set" = "FALSE" ]; then
-
-    # If both wget and curl are installed, use the default.
-    if [ "$is_wget_installed" -eq "0" -a "$is_curl_installed" -eq "0" ]; then
-        download_program="$DOWNLOAD_PROGRAM_DEFAULT"
-
-    # If only wget is installed, use that.
-    elif [ "$is_wget_installed" -eq "0" -a "$is_curl_installed" -ne "0" ]; then
-        download_program="$DOWNLOAD_PROGRAM_WGET"
-
-    # If only curl is installed, use that.
-    elif [ "$is_curl_installed" -eq "0" -a "$is_wget_installed" -ne "0" ]; then
-        download_program="$DOWNLOAD_PROGRAM_CURL"
-    fi
-
-# If the user has set which download program to use.
-else
-
-    # If the user set wget, use that if it is installed.
-    if [ "$download_program_user_set" = "$DOWNLOAD_PROGRAM_WGET" ]; then
-
-        if [ "$is_wget_installed" -eq "0" ]; then
-            download_program="$DOWNLOAD_PROGRAM_WGET"
-        else
-            Exit_With_Error_Message "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" "wget"
-        fi
-
-    # If the user set curl, use that if it is installed.
-    elif [ "$download_program_user_set" = "$DOWNLOAD_PROGRAM_CURL" ]; then
-
-        if [ "$is_curl_installed" -eq "0" ]; then
-            download_program="$DOWNLOAD_PROGRAM_CURL"
-        else
-            Exit_With_Error_Message "$EXIT_ERR_DOWNLOAD_PROGRAM_NOT_INSTALLED" "curl"
-        fi
-    fi
-fi
-
-# Set the download program display text (used if being verbose).
-if [ "$download_program" = "$DOWNLOAD_PROGRAM_WGET" ]; then
-    download_program_display_text="wget"
-elif [ "$download_program" = "$DOWNLOAD_PROGRAM_CURL" ]; then
-    download_program_display_text="curl"
-fi
+# Set whether to use wget or curl as the download program.
+Set_Download_Program
 
 # Call the appropriate function for the operation mode.
 
-if [ "$operation_mode" = "$GET_IP_MODE" ]; then
-    Handle_Get_IP_Mode
+if [ "$operation_mode" = "$FETCH_IP_MODE" ]; then
+    Handle_Fetch_IP_Mode
 
 elif [ "$operation_mode" = "$TEST_URL_MODE" ]; then
     Handle_Test_Url_Mode
