@@ -1,13 +1,16 @@
 #
-# Web source urls list for the getip script. See: https://github.com/mattst/getip
+# Web source urls list file for the fetchip script. See: https://github.com/mattst/fetchip
 #
 # The following list of web pages all provide the IP address of the connecting machine.
 #
-# No web pages should be added to this list without testing for suitability using getip's
-# test url feature, e.g.  getip -u url
+# No web pages should be added to this list without first testing them for suitability 
+# using the test url feature, e.g. fetchip -u http_url
+#
+# Any line which does not start with a http url will be ignored by the fetchip script.
+# The url should be the only thing on the line and there must be no added whitespace.
 #
 # Note: Single quotes in urls should be replaced with %27.
-# e.g. http://www.dnswatch.info/what's-my-ip == http://www.dnswatch.info/what%27s-my-ip
+# e.g. http://www.example.com/what's-my-ip == http://www.example.com/what%27s-my-ip
 #
 # Note: Paste accurately the exact tested url, including any trailing slash.
 # 

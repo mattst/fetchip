@@ -1,6 +1,6 @@
 .\" Manpage for fetchip.
 
-.TH FETCHIP 1 "10 Nov 2015" "1.0.1" "FETCHIP VERSION 1.0.1"
+.TH FETCHIP 1 "12 Nov 2015" "1.0.1" "FETCHIP VERSION 1.0.1"
 
 .SH NAME
 
@@ -11,7 +11,7 @@ fetchip retrieves the wide area network (WAN) IP address; this is sometimes refe
 
 .SH DESCRIPTION
 
-\fBfetchip\fR is a BASH script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed, the IP address is printed to the terminal (\fBstdout\fR). \fBfetchip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
+\fBfetchip\fR is a BASH script used to retrieve the WAN IPv4 address from behind a router using web pages (sources) which provide the IP address of the 'visitor' in HTML or plain text. Once retrieved and confirmed (minimum 2 sources), the IP address is printed to the terminal (\fBstdout\fR). \fBfetchip\fR can use either \fBwget\fR or \fBcurl\fR as the download program to retrieve the web sources. See: \fBREQUIREMENTS\fR
 
 From time to time a web page used as a source will stop providing IP addresses, either temporarily or permanently, but an example IP address might remain on the web page, or an IP-address-like software version number might be present, embedded in the HTML, and which could be mistaken for a real IP address (although the script tries hard to spot these so they can be ignored). In such cases, or in other similar ones, an IP address fetching script could provide an incorrect IP address.
 
@@ -33,7 +33,7 @@ All output is printed to \fBstdout\fR except for error messages which are printe
 
 .SH REQUIREMENTS
 
-\fBfetchip\fR is a BASH script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern UNIX-like operating systems come with wget pre-installed. wget and curl are both command line programs which can download web pages from the internet. \fBfetchip\fR works very well with them both but, in lots of tests on Debian and Linux Mint, wget was consistently just a little faster. If both wget and curl are installed \fBfetchip\fR will use wget by default, if only one of them is installed then that one will be automatically used. See: \fB\-p\fR \fBdownload_program\fR
+\fBfetchip\fR is a \fBBASH\fR script which requires either \fBwget\fR or \fBcurl\fR to be installed. Many modern UNIX-like operating systems come with wget pre-installed. wget and curl are both command line programs which can download web pages from the internet. \fBfetchip\fR works very well with them both but, in lots of tests on Debian and Linux Mint operating systems, wget was consistently just a little faster. If both wget and curl are installed \fBfetchip\fR will use wget by default, if only one of them is installed then that one will be automatically used. See: \fB\-p\fR \fBdownload_program\fR
 
 .SH OPTIONS
 .BR
@@ -46,11 +46,11 @@ Fetch IP mode (default); print the WAN IP address. This will retrieve the IP add
 
 .TP
 \fB\-c\fR
-Check mode; print a table containing the url of each web source in the list, the IP address that it returned or a failure message, and the time taken to retrieve the IP address. Various statistics and, if necessary, warnings will be printed on completion. [This option is used during web sources list maintenance and is not needed by the average user.]
+Check mode; print a table containing the http url of each of the sources in the web sources list file, the IP address that it returned or a failure message, and the time taken to retrieve the IP address. Various statistics and, if necessary, warnings will be printed on completion. [This option is used during the maintenance of the web sources list file and is not needed by the average user.]
 
 .TP
 \fB\-u\fR \fBurl\fR
-Test Url mode; tests a http url for possible inclusion in the web sources list. It will print a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. [This option is used during web sources list maintenance and is not needed by the average user.]
+Test Url mode; tests a http url for possible inclusion in the web sources list file. It will print a table of helpful information, including the IP address and whether the url returned a single IP address (which is required for inclusion in the web sources list file), multiple IP addresses, or no IP addresses at all. The "http://" protocol part of the url is required. [This option is used during the maintenance of the web sources list file and is not needed by the average user.]
 
 .TP
 \fB\-n\fR \fBnum_web_sources\fR
@@ -68,7 +68,7 @@ Check mode     -  10 seconds
 .br
 Test Url mode  -  10 seconds
 
-The Check and Test Url mode timeouts are intentionally high. They are intended to give servers a good chance to succeed, in case a server is slower than usual to respond. Any server which is consistently slow will be removed from the web sources list file.
+The Check and Test Url mode timeouts are intentionally high. They are intended to give servers a good chance to succeed, in case a server is slower than usual to respond. Any url which is consistently slow will be removed from the current web sources list file.
 
 .TP
 \fB\-p\fR \fBdownload_program\fR \fB[wget | curl]\fR
@@ -84,7 +84,7 @@ Verbose; print detailed information while the script runs.
 
 .TP
 \fB\-b\fR
-Bare output; prints only the IP address on success or \fBFAILED\fR if the script fails to get the IP address from the required number of sources. Error messages will still be printed, redirect \fBstderr\fR to \fB/dev/null\fR if they are not wanted. This option exists primarily so that \fBfetchip\fR can be used easily from within other scripts. 
+Bare output; prints only the IP address on success or \fBFAILED\fR if the script fails to get the IP address from the required number of sources. Error messages will still be printed, redirect \fBstderr\fR to \fB/dev/null\fR if they are not wanted. This option exists so that \fBfetchip\fR can be used easily from within other scripts. 
 
 .TP
 \fB\-h\fR
@@ -131,7 +131,7 @@ Version; print the version number.
 No known bugs. Please submit bug reports on the homepage.
 
 .SH AUTHOR
-<mattst@i-dig.info>
+mattst <mattst@i-dig.info>
 
 .SH HOMEPAGE
 https://github.com/mattst/fetchip
@@ -139,11 +139,11 @@ https://github.com/mattst/fetchip
 .SH CONTRIBUTE
 If you have a web server and would like to allow it to be used as a source in the web sources list file then please see the homepage for details. It needs only a 2 line PHP program and would generate very little bandwidth - if lots of people did so it would be helpful to the project.
 .LP
-Please feel free to submit new IP address providing web pages to be added to the web sources list. You should first check they are not already in the latest web sources list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
+Please feel free to submit new IP address providing web pages to be added to the web sources list file. You should first check they are not already in the latest web sources list file and that they are suitable for inclusion by using the \fB-u\fR \fBurl\fR option.
 
 .SH COPYRIGHT
-Copyright <mattst@i-dig.info>
+Copyright mattst <mattst@i-dig.info>
 .br
 GNU General Public License v.3
 .br
-GPLv3 http://gnu.org/licenses/gpl.html
+http://www.gnu.org/licenses/gpl-3.0.en.html
