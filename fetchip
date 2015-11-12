@@ -85,7 +85,7 @@ TEST_URL_MODE="2"
 CHECK_MODE="3"
 
 # The default url to the list of web sources.
-WEB_SOURCES_LIST_DEFAULT="https://crius.feralhosting.com/gencon/SourceUrlsList"
+WEB_SOURCES_LIST_DEFAULT="https://raw.githubusercontent.com/mattst/fetchip/master/source_urls_list"
 
 # The default, min, and max values of the number of web sources to use for verification.
 WEB_SOURCES_VERIFY_NUM_DEFAULT="2"
