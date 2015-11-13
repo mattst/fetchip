@@ -55,6 +55,14 @@ fetchip has two help options:
 
 A traditional man page, `fetchip_man`, is also supplied for users who would like to install it.
 
+#### Contribute
+
+If you have a web server and would like to allow it to be used as a source in the web sources list file then please follow the submissions link below. It needs only a 2 line PHP program and would generate very little bandwidth. If lots of people did so it would be helpful to the project.
+
+Alternatively please feel free to submit new IP address providing web pages to be added to the web sources list file. You should first check they are not already in the latest web sources list file and that they are suitable for inclusion by using the `-u url` (Test Url) option.
+
+[Submissions of urls to use as web sources](https://github.com/mattst/fetchip/issues/1)
+
 #### License
 
 Copyright (c) 2015 [mattst](https://github.com/mattst)
